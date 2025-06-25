@@ -6,7 +6,7 @@ mod execution_phase;
 mod tally_phase;
 
 #[oracle_program]
-impl PriceFeed {
+impl ProxyDataFeed {
     fn execute() {
         execution_phase().unwrap();
     }

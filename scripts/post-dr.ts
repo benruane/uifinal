@@ -11,14 +11,16 @@ async function main() {
 
     console.log('Posting and waiting for a result, this may take a little while..');
 
+    // Example data request for three assets to test consensus
     const dataRequestInput: PostDataRequestInput = {
         consensusOptions: {
             method: 'none'
         },
         execProgramId: process.env.ORACLE_PROGRAM_ID,
-        execInputs: Buffer.from('eth-usdc'),
+        execInputs: Buffer.from('equity:AAPL,fx:EUR,cfd:XAU:USD'),
         tallyInputs: Buffer.from([]),
         memo: Buffer.from(new Date().toISOString()),
+        gasPrice: 200000n
     };
 
     const result = await postAndAwaitDataRequest(signer, dataRequestInput, {});

@@ -1,0 +1,170 @@
+name: 🚀 Release SEDA Push Solver
+on:
+  push:
+    tags: ["*"]
+
+permissions:
+  contents: write
+  pull-requests: write
+  packages: write
+
+env:
+  REGISTRY_IMAGE: ghcr.io/sedaprotocol/seda-push-solver
+
+jobs:
+  build:
+    name: 🛠️ Build Binary Artifacts and Changelog
+    runs-on: ubuntu-latest
+    outputs:
+      changelog: ${{ steps.changelog.outputs.changelog }}
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🥟 Setup Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: 📦 Install Dependencies
+        run: bun install
+
+      - name: 🔨 Build Binary Artifacts
+        run: |
+          mkdir -p build
+          # Build optimized binary for Linux x64
+          bun build src/runner.ts --target=bun --minify --outfile build/bundle-min.js
+          bun build build/bundle-min.js --compile --outfile build/seda-pusher-linux-x64 --target=bun-linux-x64
+          # Build for Linux ARM64
+          bun build build/bundle-min.js --compile --outfile build/seda-pusher-linux-arm64 --target=bun-linux-arm64
+          # Make binaries executable
+          chmod +x build/seda-pusher-*
+
+      - name: 📝 Generate Changelog
+        id: changelog
+        uses: TriPSs/conventional-changelog-action@v5.3.0
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          output-file: false
+          skip-commit: true
+          skip-tag: true
+          skip-git-pull: true
+          git-push: false
+
+      - name: 🔢 Generate Checksum
+        uses: jmgilman/actions-generate-checksum@v1
+        with:
+          patterns: |
+            build/seda-pusher-linux-arm64
+            build/seda-pusher-linux-x64
+
+      - name: ⬆️ Upload Binary artifacts and checksum for release
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-assets
+          path: |
+            build/seda-pusher-linux-arm64
+            build/seda-pusher-linux-x64
+            checksum.txt
+
+  build_and_push_docker_images:
+    name: 🐳 Build and Push Multi-Arch Docker Images
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🔧 Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: 🔧 Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: 🔐 Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 🏷️ Docker meta
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY_IMAGE }}
+          tags: |
+            type=schedule
+            type=ref,event=branch
+            type=ref,event=pr
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+            type=sha
+            latest
+
+      - name: 🐳 Build and push Multi-Arch Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: .build/docker/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+
+  create_release:
+    name: 🎉 Create GitHub Release
+    runs-on: ubuntu-latest
+    needs: [build, build_and_push_docker_images]
+    permissions:
+      contents: write
+      packages: read
+      actions: read
+    steps:
+      - name: 📥 Download all release assets
+        uses: actions/download-artifact@v4
+        with:
+          name: release-assets
+          path: ./release-assets
+
+      - name: 🎉 Create GitHub Release
+        uses: ncipollo/release-action@v1
+        with:
+          allowUpdates: true
+          generateReleaseNotes: true
+          body: |
+            ## 🚀 SEDA Push Solver Release ${{ github.ref_name }}
+            
+            This release includes:
+            - 🐳 Multi-architecture Docker images (AMD64, ARM64)
+            - 📦 Standalone binary artifacts for Linux
+            - 🔄 Automated DataRequest scheduling capabilities
+            - 🛡️ Enhanced retry logic and error handling
+            
+            ### Docker Images
+            ```bash
+            # Pull the latest image
+            docker pull ghcr.io/sedaprotocol/seda-push-solver:${{ github.ref_name }}
+            
+            # Run with environment variables
+            docker run --env-file .env ghcr.io/sedaprotocol/seda-push-solver:${{ github.ref_name }}
+            ```
+            
+            ### Binary Usage
+            ```bash
+            # Download and run binary directly
+            chmod +x seda-pusher-linux-x64
+            ./seda-pusher-linux-x64
+            ```
+            
+            ### Requirements
+            - SEDA account with testnet/mainnet tokens
+            - Oracle Program deployed to SEDA network
+            - Environment variables configured (see env.example)
+            
+            ${{ needs.build.outputs.changelog }}
+          artifacts: ./release-assets/**/*
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit: ${{ github.sha }}
+          tag: ${{ github.ref_name }} 

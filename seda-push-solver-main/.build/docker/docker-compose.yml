@@ -1,0 +1,21 @@
+services:
+  seda-solver:
+    build:
+      context: ../..
+      dockerfile: .build/docker/Dockerfile
+      args:
+        TARGET_ARCH: ${TARGET_ARCH:-bun-linux-arm64}
+    environment:
+      # Provide the private key if available
+      EVM_BASE_SEPOLIA_PRIVATE_KEY: ${SEDA_LOCAL_SEPOLIA_PRIVATE_KEY}
+    volumes:
+    - type: bind
+      source: ../../config.json
+      target: /app/config.json
+      read_only: true
+      consistency: cached
+    networks:
+      - solver-jasper-network
+networks:
+  solver-network:
+    driver: bridge

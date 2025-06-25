@@ -1,0 +1,49 @@
+{
+  "name": "seda-push-solver",
+  "version": "1.0.0",
+  "description": "SEDA DataRequest scheduler - Generic oracle data pusher for SEDA network",
+  "main": "src/index.ts",
+  "type": "module",
+  "scripts": {
+    "start": "bun run src/runner.ts",
+    "scheduler": "bun run src/runner.ts",
+    "demo": "bun run examples/demo.ts",
+    "test": "bun test",
+    "test:unit": "bun test tests/unit/",
+    "test:integration": "bun run tests/test-seda-config.ts",
+    "test:datarequest": "bun run tests/test-datarequest.ts",
+    "test:multiple": "bun run tests/test-multiple-requests.ts",
+    "test:all": "bun test && bun run tests/test-seda-config.ts && bun run tests/test-datarequest.ts",
+    "build": "tsc --noEmit",
+    "build:bundle": "bun build src/runner.ts --target=bun --outfile dist/bundle.js",
+    "build:binary": "bun run build:bundle && bun build dist/bundle.js --compile --outfile dist/seda-pusher",
+    "build:optimized": "bun build src/runner.ts --target=bun --minify --outfile dist/bundle-min.js && bun build dist/bundle-min.js --compile --outfile dist/seda-pusher-optimized",
+    "lint": "tsc --noEmit"
+  },
+  "keywords": [
+    "seda",
+    "oracle",
+    "blockchain",
+    "datarequest",
+    "typescript",
+    "scheduler"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@cosmjs/crypto": "^0.33.1",
+    "@cosmjs/stargate": "^0.33.1",
+    "@openzeppelin/merkle-tree": "^1.0.8",
+    "@seda-protocol/dev-tools": "^1.0.0-rc.13",
+    "@seda-protocol/proto-messages": "^1.0.0-rc.1",
+    "@seda-protocol/utils": "^2.0.0",
+    "buffer": "^6.0.3",
+    "ethers": "^6.14.4",
+    "true-myth": "^9.0.1",
+    "viem": "^2.31.3"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "typescript": "^5.0.0"
+  }
+}
