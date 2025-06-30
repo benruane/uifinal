@@ -12065,13 +12065,13 @@ This ensures that you're testing the behavior the user would see in the browser.
       suspenseInstance = suspenseInstance.nextSibling;
       for (var depth = 0;suspenseInstance; ) {
         if (suspenseInstance.nodeType === 8) {
-          var data = suspenseInstance.data;
-          if (data === SUSPENSE_END_DATA) {
+          var data2 = suspenseInstance.data;
+          if (data2 === SUSPENSE_END_DATA) {
             if (depth === 0)
               return getNextHydratable(suspenseInstance.nextSibling);
             depth--;
           } else
-            data !== SUSPENSE_START_DATA && data !== SUSPENSE_FALLBACK_START_DATA && data !== SUSPENSE_PENDING_START_DATA || depth++;
+            data2 !== SUSPENSE_START_DATA && data2 !== SUSPENSE_FALLBACK_START_DATA && data2 !== SUSPENSE_PENDING_START_DATA || depth++;
         }
         suspenseInstance = suspenseInstance.nextSibling;
       }
@@ -12081,13 +12081,13 @@ This ensures that you're testing the behavior the user would see in the browser.
       targetInstance = targetInstance.previousSibling;
       for (var depth = 0;targetInstance; ) {
         if (targetInstance.nodeType === 8) {
-          var data = targetInstance.data;
-          if (data === SUSPENSE_START_DATA || data === SUSPENSE_FALLBACK_START_DATA || data === SUSPENSE_PENDING_START_DATA) {
+          var data2 = targetInstance.data;
+          if (data2 === SUSPENSE_START_DATA || data2 === SUSPENSE_FALLBACK_START_DATA || data2 === SUSPENSE_PENDING_START_DATA) {
             if (depth === 0)
               return targetInstance;
             depth--;
           } else
-            data === SUSPENSE_END_DATA && depth++;
+            data2 === SUSPENSE_END_DATA && depth++;
         }
         targetInstance = targetInstance.previousSibling;
       }
@@ -15897,30 +15897,21 @@ var ASSET_CATEGORIES = {
   ],
   "Commodities (CFD)": [
     { id: "cfd:XAU:USD", label: "Gold (XAU/USD)" },
-    { id: "cfd:WTI:USD", label: "Oil - US Crude (WTI/USD)" },
-    { id: "cfd:BRN:USD", label: "Oil - Brent Crude (BRN/USD)" }
-  ],
-  "US Listed Funds - Quote (Overnight Session)": [
-    { id: "uslf_q:NVDA", label: "NVDA Quote (USLF)" },
-    { id: "uslf_q:TSLA", label: "TSLA Quote (USLF)" },
-    { id: "uslf_q:GOOG", label: "GOOG Quote (USLF)" },
-    { id: "uslf_q:AAPL", label: "AAPL Quote (USLF)" },
-    { id: "uslf_q:UNH", label: "UNH Quote (USLF)" },
-    { id: "uslf_q:META", label: "META Quote (USLF)" },
-    { id: "uslf_q:MSFT", label: "MSFT Quote (USLF)" },
-    { id: "uslf_q:SPY", label: "SPY Quote (USLF)" },
-    { id: "uslf_q:AMZN", label: "AMZN Quote (USLF)" }
+    { id: "cfd:WTI:USD", label: "WTI Crude Oil (WTI/USD)" },
+    { id: "cfd:BRN:USD", label: "Brent Crude Oil (BRN/USD)" }
   ],
   "US Listed Funds - Trade (Overnight Session)": [
-    { id: "uslf_t:NVDA", label: "NVDA Trade (USLF)" },
-    { id: "uslf_t:TSLA", label: "TSLA Trade (USLF)" },
-    { id: "uslf_t:GOOG", label: "GOOG Trade (USLF)" },
-    { id: "uslf_t:AAPL", label: "AAPL Trade (USLF)" },
-    { id: "uslf_t:UNH", label: "UNH Trade (USLF)" },
-    { id: "uslf_t:META", label: "META Trade (USLF)" },
-    { id: "uslf_t:MSFT", label: "MSFT Trade (USLF)" },
-    { id: "uslf_t:SPY", label: "SPY Trade (USLF)" },
-    { id: "uslf_t:AMZN", label: "AMZN Trade (USLF)" }
+    { id: "uslf_t:NVDA", label: "NVDA (Trade, Overnight)" },
+    { id: "uslf_t:TSLA", label: "TSLA (Trade, Overnight)" },
+    { id: "uslf_t:GOOG", label: "GOOG (Trade, Overnight)" },
+    { id: "uslf_t:AAPL", label: "AAPL (Trade, Overnight)" },
+    { id: "uslf_t:UNH", label: "UNH (Trade, Overnight)" },
+    { id: "uslf_t:META", label: "META (Trade, Overnight)" },
+    { id: "uslf_t:MSFT", label: "MSFT (Trade, Overnight)" },
+    { id: "uslf_t:SPY", label: "SPY (Trade, Overnight)" },
+    { id: "uslf_t:AMZN", label: "AMZN (Trade, Overnight)" },
+    { id: "uslf_t:COIN", label: "COIN (Trade, Overnight)" },
+    { id: "uslf_t:CRCL", label: "CRCL (Trade, Overnight)" }
   ]
 };
 var STORAGE_KEYS = {
@@ -15985,98 +15976,56 @@ var storageHelpers = {
     }
   }
 };
-var resultMatchesAsset = (result, assetId) => {
-  console.log("=== RESULT MATCHING DEBUG ===");
-  console.log("Checking if result matches asset:", result.symbol, "vs", assetId);
-  if (result.symbol === assetId) {
-    console.log("✅ Exact match found");
-    return true;
-  }
-  const assetParts = assetId.split(":");
-  const assetType = assetParts[0];
-  let assetSymbol = assetParts.slice(1).join(":");
-  if (assetType === "cfd") {
-    if (assetSymbol.includes(":")) {
-      assetSymbol = assetSymbol.replace(":", "/");
-    }
-  }
-  console.log("Target asset type:", assetType, "symbol:", assetSymbol);
-  console.log("Backend symbol:", result.symbol);
-  let matches = false;
-  if (result.symbol.includes(":USLF24")) {
-    const baseSymbol = result.symbol.split(":USLF24")[0];
-    console.log("USLF symbol detected, base symbol:", baseSymbol);
-    if (assetType.startsWith("uslf_") && assetSymbol === baseSymbol) {
-      console.log(`✅ USLF match: ${result.symbol} -> ${assetId}`);
-      matches = true;
-    } else {
-      console.log(`❌ USLF no match: ${result.symbol} (${baseSymbol}) vs ${assetId} (${assetType}:${assetSymbol})`);
-    }
-  } else if (result.symbol.includes(":BFX")) {
-    const baseSymbol = result.symbol.split(":BFX")[0];
-    console.log("BFX symbol detected, base symbol:", baseSymbol);
-    if (assetType === "cfd" && assetSymbol === baseSymbol) {
-      console.log(`✅ BFX match: ${result.symbol} -> ${assetId}`);
-      matches = true;
-    } else {
-      console.log(`❌ BFX no match: ${result.symbol} (${baseSymbol}) vs ${assetId} (${assetType}:${assetSymbol})`);
-    }
-  } else if (result.symbol.includes("/")) {
-    const [from, to] = result.symbol.split("/");
-    console.log("Forex/commodity pair detected:", from, "/", to);
-    if (to === "USD" && assetType === "fx" && assetSymbol === from) {
-      console.log(`✅ Forward forex match: ${result.symbol} -> ${assetId}`);
-      matches = true;
-    } else if (from === "USD" && assetType === "fx_r" && assetSymbol === to) {
-      console.log(`✅ Reverse forex match: ${result.symbol} -> ${assetId}`);
-      matches = true;
-    } else if (assetType === "cfd" && assetSymbol === result.symbol) {
-      console.log(`✅ Commodity match: ${result.symbol} -> ${assetId}`);
-      matches = true;
-    } else {
-      console.log(`❌ Forex/commodity no match: ${result.symbol} vs ${assetId} (${assetType}:${assetSymbol})`);
-    }
-  } else {
-    console.log("Simple symbol detected:", result.symbol);
-    if (assetType === "equity" && assetSymbol === result.symbol) {
-      console.log(`✅ Equity match: ${result.symbol} -> ${assetId}`);
-      matches = true;
-    } else {
-      console.log(`❌ Equity no match: ${result.symbol} vs ${assetId} (${assetType}:${assetSymbol})`);
-    }
-  }
-  console.log(`Final result: ${result.symbol} matches ${assetId}: ${matches}`);
-  console.log("=== END RESULT MATCHING DEBUG ===");
-  return matches;
+var getCategoryAssetIds = (categoryName) => {
+  const category = ASSET_CATEGORIES[categoryName];
+  return category ? category.map((asset) => asset.id) : [];
 };
 function App() {
-  const [selectedAssets, setSelectedAssets] = import_react.useState(() => storageHelpers.getSelectedAssets());
-  const [results, setResults] = import_react.useState(() => storageHelpers.getCurrentResults());
-  const [requestHistory, setRequestHistory] = import_react.useState(() => storageHelpers.getRequestHistory());
+  const [selectedAssets, setSelectedAssets] = import_react.useState(storageHelpers.getSelectedAssets());
+  const [currentResults, setCurrentResults] = import_react.useState(storageHelpers.getCurrentResults());
+  const [requestHistory, setRequestHistory] = import_react.useState(storageHelpers.getRequestHistory());
   const [isLoading, setIsLoading] = import_react.useState(false);
-  const [error, setError] = import_react.useState("");
-  const [showLoadingPopup, setShowLoadingPopup] = import_react.useState(false);
-  const [showSuccessPopup, setShowSuccessPopup] = import_react.useState(false);
+  const [error, setError] = import_react.useState(null);
+  const [showModal, setShowModal] = import_react.useState(false);
   const [drStatuses, setDrStatuses] = import_react.useState([]);
-  const [currentSplitRequests, setCurrentSplitRequests] = import_react.useState(false);
-  const [currentRequestCount, setCurrentRequestCount] = import_react.useState(1);
-  const [currentExplorerLink, setCurrentExplorerLink] = import_react.useState("");
-  const [currentAllExplorerLinks, setCurrentAllExplorerLinks] = import_react.useState([]);
+  const [showLoadingPopup, setShowLoadingPopup] = import_react.useState(false);
+  const [loadingInfo, setLoadingInfo] = import_react.useState({
+    stage: "",
+    message: "",
+    drCount: 0,
+    completedCount: 0,
+    totalAssets: 0
+  });
   import_react.useEffect(() => {
     storageHelpers.setSelectedAssets(selectedAssets);
   }, [selectedAssets]);
   import_react.useEffect(() => {
-    storageHelpers.setCurrentResults(results);
-  }, [results]);
-  import_react.useEffect(() => {
     storageHelpers.setRequestHistory(requestHistory);
   }, [requestHistory]);
+  import_react.useEffect(() => {
+    storageHelpers.setCurrentResults(currentResults);
+  }, [currentResults]);
   const handleAssetToggle = (assetId) => {
     setSelectedAssets((prev) => prev.includes(assetId) ? prev.filter((id) => id !== assetId) : [...prev, assetId]);
   };
   const handleSelectAllAssets = () => {
-    const allAssets = Object.values(ASSET_CATEGORIES).flat().map((asset) => asset.id);
-    setSelectedAssets(allAssets);
+    const allAssetIds = Object.values(ASSET_CATEGORIES).flat().map((asset) => asset.id);
+    setSelectedAssets(allAssetIds);
+  };
+  const handleSelectCategory = (categoryName) => {
+    const categoryAssetIds = getCategoryAssetIds(categoryName);
+    setSelectedAssets((prev) => {
+      const newSelection = [...prev];
+      for (const assetId of categoryAssetIds) {
+        if (!newSelection.includes(assetId)) {
+          newSelection.push(assetId);
+        }
+      }
+      return newSelection;
+    });
+  };
+  const handleClearSelection = () => {
+    setSelectedAssets([]);
   };
   const handlePullPrices = async () => {
     if (selectedAssets.length === 0) {
@@ -16085,658 +16034,688 @@ function App() {
     }
     setIsLoading(true);
     setError("");
-    storageHelpers.clearCurrentResults();
-    setResults([]);
     setShowLoadingPopup(true);
-    setShowSuccessPopup(false);
+    const expectedDrCount = Math.ceil(selectedAssets.length / 4);
+    setLoadingInfo({
+      stage: "preparing",
+      message: `Preparing to submit ${selectedAssets.length} assets...`,
+      drCount: expectedDrCount,
+      completedCount: 0,
+      totalAssets: selectedAssets.length
+    });
+    storageHelpers.clearCurrentResults();
+    setCurrentResults([]);
     setDrStatuses([]);
     try {
+      console.log(`Submitting ${selectedAssets.length} assets in ${expectedDrCount} requests`);
+      setLoadingInfo((prev) => ({
+        ...prev,
+        stage: "submitting",
+        message: `Submitting data requests to SEDA Network...`
+      }));
       const response = await fetch("/api/submit-request", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ assets: selectedAssets })
       });
       if (!response.ok) {
-        throw new Error("Failed to submit request");
+        throw new Error(`Failed to submit request: ${response.status} ${response.statusText}`);
       }
-      const data = await response.json();
-      if (data.status === "submitted") {
-        setDrStatuses(data.drIds.map((drId) => ({ drId, status: "pending" })));
-        await startPollingForResultsLive(data.drIds, data.requestCount, data.gasOptimization);
+      const data2 = await response.json();
+      console.log(`Server response:`, data2);
+      if (data2.status === "completed" || data2.status === "processing") {
+        console.log(`Successfully processed ${data2.requestCount} data requests`);
+        console.log(`Found ${data2.totalResults} price results so far`);
+        setCurrentResults(data2.results || []);
+        storageHelpers.setCurrentResults(data2.results || []);
+        setDrStatuses(data2.drIds.map((drId, index) => ({
+          drId,
+          status: data2.status === "completed" ? "finalized" : "polling",
+          blockHeight: data2.drBlockHeights[index]
+        })));
+        setLoadingInfo((prev) => ({
+          ...prev,
+          stage: data2.status === "completed" ? "completed" : "polling",
+          drCount: data2.requestCount,
+          message: data2.status === "completed" ? `✅ Data Request completed! Pulled ${data2.totalResults} total prices.` : `⏱️ Processed ${data2.requestCount} data requests in ${data2.processingTime}ms. Found ${data2.totalResults} results so far. Some DRs may still be processing...`,
+          completedCount: data2.status === "completed" ? data2.requestCount : 0
+        }));
+        if (data2.status === "processing" && data2.drIds && data2.drIds.length > 0) {
+          console.log(`Starting to poll for additional results from ${data2.drIds.length} DRs...`);
+          pollForAdditionalResults(data2.drIds, data2.drBlockHeights, data2.totalResults);
+        } else {
+          setTimeout(() => {
+            setRequestHistory((prev) => [{
+              id: data2.drIds[0] || "unknown",
+              timestamp: new Date().toISOString(),
+              assets: selectedAssets,
+              results: data2.results || [],
+              explorerLink: data2.drBlockHeights[0] ? `https://testnet.explorer.seda.xyz/data-requests/${data2.drIds[0]}/${data2.drBlockHeights[0]}` : "",
+              requestCount: data2.requestCount,
+              allExplorerLinks: data2.drIds.map((drId, index) => `https://testnet.explorer.seda.xyz/data-requests/${drId}/${data2.drBlockHeights[index]}`)
+            }, ...prev]);
+          }, 100);
+        }
       } else {
-        setResults(data.results || []);
-        setCurrentSplitRequests(data.isSplit || false);
-        setCurrentRequestCount(data.requestCount || 1);
-        setCurrentExplorerLink(data.drIds?.[0] ? `https://testnet.explorer.seda.xyz/data-requests/${data.drIds[0]}/${data.drBlockHeights?.[0] || "unknown"}` : "");
-        setCurrentAllExplorerLinks((data.drIds || []).map((drId, index) => `https://testnet.explorer.seda.xyz/data-requests/${drId}/${data.drBlockHeights?.[index] || "unknown"}`));
+        throw new Error(`Server error: ${data2.error || "Unknown server error"}`);
       }
-      setShowLoadingPopup(false);
-      setShowSuccessPopup(true);
     } catch (error2) {
       console.error("Error:", error2);
       setError(error2.message);
-      setShowLoadingPopup(false);
+      setLoadingInfo((prev) => ({
+        ...prev,
+        stage: "error",
+        message: `⚠️ Data Request completed with some errors. Pulled ${data.totalResults} total prices.`
+      }));
     } finally {
       setIsLoading(false);
     }
   };
-  const startPollingForResultsLive = async (drIds, requestCount, gasOptimization) => {
-    setCurrentSplitRequests(requestCount > 1);
-    setCurrentRequestCount(requestCount);
-    await Promise.all(drIds.map(async (drId, idx) => {
-      setDrStatuses((prev) => prev.map((dr, i) => i === idx ? { ...dr, status: "polling" } : dr));
-      const maxAttempts = 30;
-      let attempts = 0;
-      let finalized = false;
-      while (attempts < maxAttempts && !finalized) {
-        try {
-          const response = await fetch("/api/poll-dr-chain", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              drId,
-              blockHeight: "latest"
-            })
-          });
-          if (!response.ok) {
-            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-          }
-          const data = await response.json();
-          if (data.status === "ok" && data.result) {
-            const parsedResults = Array.isArray(data.result) ? data.result : [];
-            setDrStatuses((prev) => prev.map((dr, i) => i === idx ? {
-              ...dr,
-              status: parsedResults.length > 0 ? "finalized" : "no_data",
-              blockHeight: data.blockHeight,
-              results: parsedResults
-            } : dr));
-            setResults((prev) => {
-              const newResults = [...prev];
-              console.log(`\uD83D\uDD04 Adding results from DR ${idx + 1}:`, parsedResults);
-              for (const result of parsedResults) {
+  const pollForAdditionalResults = async (drIds, drBlockHeights, initialResultCount) => {
+    const maxPollingAttempts = 60;
+    let attempts = 0;
+    let totalResults = initialResultCount;
+    setLoadingInfo((prev) => ({
+      ...prev,
+      message: `⏳ Waiting for SEDA Network to finalize results...`
+    }));
+    await new Promise((res) => setTimeout(res, 15000));
+    const pollInterval = setInterval(async () => {
+      attempts++;
+      try {
+        console.log(`Polling attempt ${attempts}/${maxPollingAttempts} for additional results...`);
+        setLoadingInfo((prev) => ({
+          ...prev,
+          message: `\uD83D\uDD0D Polling for additional results... (Attempt ${attempts}/${maxPollingAttempts})`
+        }));
+        const response = await fetch("/api/check-results", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ drIds, blockHeights: drBlockHeights })
+        });
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        const data2 = await response.json();
+        if (data2.newResults && data2.newResults.length > 0) {
+          console.log(`Found ${data2.newResults.length} new results!`);
+          setCurrentResults((prev) => {
+            const newResults = [...prev];
+            for (const result of data2.newResults) {
+              if (result && typeof result === "object" && "symbol" in result && "price" in result) {
                 const existingIndex = newResults.findIndex((r) => r.symbol === result.symbol);
                 if (existingIndex >= 0) {
-                  console.log(`\uD83D\uDCDD Updating existing result for ${result.symbol}: ${newResults[existingIndex].price} → ${result.price}`);
                   newResults[existingIndex] = result;
                 } else {
-                  console.log(`➕ Adding new result for ${result.symbol}: ${result.price}`);
                   newResults.push(result);
                 }
+              } else if (typeof result === "string") {
+                newResults.push({ symbol: "RAW", price: result });
               }
-              console.log(`\uD83D\uDCCA Total results after DR ${idx + 1}:`, newResults);
-              storageHelpers.setCurrentResults(newResults);
-              return newResults;
-            });
-            finalized = true;
-          } else if (data.status === "no_result") {
-            setDrStatuses((prev) => prev.map((dr, i) => i === idx ? {
-              ...dr,
-              status: "no_data",
-              blockHeight: data.blockHeight,
-              results: []
-            } : dr));
-            finalized = true;
-          } else if (data.status === "not_found" || data.status === "batch_not_found") {
-            console.log(`DR ${drId} not found yet (attempt ${attempts + 1})`);
-          }
-        } catch (error2) {
-          if (attempts === maxAttempts - 1) {
-            setDrStatuses((prev) => prev.map((dr, i) => i === idx ? { ...dr, status: "error", error: error2.message } : dr));
-          }
+            }
+            console.log("Updated currentResults:", newResults);
+            return newResults;
+          });
+          storageHelpers.setCurrentResults(currentResults);
+          totalResults += data2.newResults.length;
+          setLoadingInfo((prev) => ({
+            ...prev,
+            message: `✅ Found ${data2.newResults.length} new results! Total: ${totalResults} results.`
+          }));
         }
-        attempts++;
-        if (!finalized)
-          await new Promise((res) => setTimeout(res, 1000));
+        if (totalResults >= selectedAssets.length || attempts >= maxPollingAttempts) {
+          clearInterval(pollInterval);
+          setLoadingInfo((prev) => ({
+            ...prev,
+            stage: "completed",
+            message: `✅ Polling completed! Found ${totalResults} total results.`,
+            completedCount: drIds.length
+          }));
+          setDrStatuses((prev) => prev.map((dr) => ({ ...dr, status: "finalized" })));
+          setTimeout(() => {
+            setRequestHistory((prev) => [{
+              id: drIds[0] || "unknown",
+              timestamp: new Date().toISOString(),
+              assets: selectedAssets,
+              results: currentResults,
+              explorerLink: drBlockHeights[0] ? `https://testnet.explorer.seda.xyz/data-requests/${drIds[0]}/${drBlockHeights[0]}` : "",
+              requestCount: drIds.length,
+              allExplorerLinks: drIds.map((drId, index) => `https://testnet.explorer.seda.xyz/data-requests/${drId}/${drBlockHeights[index]}`)
+            }, ...prev]);
+          }, 100);
+        }
+      } catch (error2) {
+        console.error(`Polling attempt ${attempts} failed:`, error2);
+        if (attempts >= maxPollingAttempts) {
+          clearInterval(pollInterval);
+          setLoadingInfo((prev) => ({
+            ...prev,
+            stage: "completed",
+            message: `⚠️ Polling completed with some errors. Found ${totalResults} results.`,
+            completedCount: drIds.length
+          }));
+        }
       }
-      if (!finalized) {
-        setDrStatuses((prev) => prev.map((dr, i) => i === idx ? { ...dr, status: "error", error: "Timeout or unknown error" } : dr));
-      }
-    }));
-    await new Promise((resolve) => setTimeout(resolve, 200));
-    setDrStatuses((prev) => {
-      const updatedDrStatuses = prev.filter((dr) => dr.blockHeight);
-      if (updatedDrStatuses.length > 0) {
-        setCurrentExplorerLink(updatedDrStatuses[0] ? `https://testnet.explorer.seda.xyz/data-requests/${updatedDrStatuses[0].drId}/${updatedDrStatuses[0].blockHeight}` : "");
-        setCurrentAllExplorerLinks(updatedDrStatuses.map((dr) => `https://testnet.explorer.seda.xyz/data-requests/${dr.drId}/${dr.blockHeight}`));
-      }
-      return prev;
-    });
-    setTimeout(() => {
-      setRequestHistory((prev) => [{
-        id: drIds[0] || "unknown",
-        timestamp: new Date().toISOString(),
-        assets: selectedAssets,
-        results,
-        explorerLink: currentExplorerLink,
-        splitRequests: requestCount > 1,
-        allExplorerLinks: currentAllExplorerLinks,
-        requestCount,
-        gasOptimization
-      }, ...prev]);
-    }, 100);
+    }, 2000);
   };
-  import_react.useEffect(() => {
-    function handleClickOutside(event) {
-      const popup = document.querySelector(".modern-modal");
-      if (showSuccessPopup && popup && !popup.contains(event.target)) {
-        setShowSuccessPopup(false);
-      }
-    }
-    if (showSuccessPopup) {
-      document.addEventListener("mousedown", handleClickOutside);
-    }
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, [showSuccessPopup]);
-  import_react.useEffect(() => {
-    if (selectedAssets.length === 0 && results.length > 0) {
-      setResults([]);
-    }
-  }, [selectedAssets]);
-  import_react.useEffect(() => {
-    setResults([]);
-  }, []);
-  import_react.useEffect(() => {
-    if (results.length > 0) {
-      console.log(`\uD83C\uDFAF Results state updated:`, results);
-    }
-  }, [results]);
   const clearAllData = () => {
     if (confirm("Are you sure you want to clear all data? This will remove all results and history.")) {
       storageHelpers.clearCurrentResults();
       storageHelpers.setRequestHistory([]);
       storageHelpers.setSelectedAssets([]);
-      setResults([]);
+      setCurrentResults([]);
       setRequestHistory([]);
       setSelectedAssets([]);
-      console.log("\uD83E\uDDF9 All localStorage data cleared");
     }
   };
   return /* @__PURE__ */ jsx_dev_runtime.jsxDEV("div", {
     className: "app",
     children: [
-      /* @__PURE__ */ jsx_dev_runtime.jsxDEV("div", {
+      /* @__PURE__ */ jsx_dev_runtime.jsxDEV("header", {
         className: "header",
-        children: [
-          /* @__PURE__ */ jsx_dev_runtime.jsxDEV("div", {
-            className: "logo",
-            children: /* @__PURE__ */ jsx_dev_runtime.jsxDEV("svg", {
-              xmlns: "http://www.w3.org/2000/svg",
-              fill: "none",
-              viewBox: "0 0 140 36",
-              className: "seda-logo",
-              children: [
-                /* @__PURE__ */ jsx_dev_runtime.jsxDEV("title", {
-                  children: "SEDA logo"
-                }, undefined, false, undefined, this),
-                /* @__PURE__ */ jsx_dev_runtime.jsxDEV("path", {
-                  fill: "currentColor",
-                  d: "m65.588 15.81-2.191-.367c-3.588-.602-4.05-1.632-4.05-2.46 0-1.55 1.727-2.512 4.503-2.512 2.51 0 4.418 1.001 5.107 2.683l.1.245h3.82l-.131-.487c-.986-3.653-4.339-5.924-8.752-5.924-2.963 0-5.419.818-6.913 2.303-1.009 1.001-1.53 2.271-1.506 3.672.064 3.101 2.476 5.096 7.162 5.924l2.183.394c3.54.705 4.265 1.584 4.265 2.686 0 1.53-1.983 2.593-4.818 2.593-3.092 0-4.791-1.044-5.68-3.485l-.097-.261h-3.641l.08.46c.733 4.175 4.278 6.773 9.249 6.773 2.995 0 5.506-.85 7.07-2.39 1.06-1.047 1.617-2.361 1.606-3.805-.032-3.253-2.443-5.231-7.37-6.042h.008-.004ZM106.22 7.272h-7.321v20.492h7.321c6.537 0 10.925-4.117 10.925-10.247 0-6.131-4.388-10.246-10.925-10.246v.001Zm7.097 10.246c0 4.169-2.719 6.761-7.097 6.761h-3.637V10.755h3.637c4.378 0 7.097 2.59 7.097 6.761v.002ZM136.404 7.273v3.015c-1.842-2.037-4.282-3.187-6.839-3.187-6.048 0-10.438 4.38-10.438 10.414s4.39 10.414 10.438 10.414c2.556 0 4.995-1.15 6.839-3.186v3.018H140V7.273h-3.596Zm0 10.244c0 4.082-2.828 7.042-6.726 7.042s-6.726-2.96-6.726-7.042 2.828-7.042 6.726-7.042 6.726 2.96 6.726 7.042ZM93.171 10.077c-1.899-1.959-4.666-3.082-7.594-3.082-6.032 0-10.58 4.525-10.58 10.529 0 6.003 4.662 10.528 10.61 10.528 4.194 0 7.958-2.451 9.558-6.159h-4.082c-1.29 1.768-3.2 2.731-5.472 2.731-3.304 0-6.007-2.19-6.73-5.385h17.114l.02-.368c.209-3.617-.777-6.66-2.84-8.79h-.004v-.004Zm-14.33 5.728c.665-3.289 3.227-5.385 6.649-5.385 2.895 0 6.167 2.045 6.675 5.385H78.84ZM18.985.39a9.16 9.16 0 0 0-.416 1.465c-.297 1.56-.016 2.688.839 3.347.804.62 3.137 1.625 5.605 2.688.806.348 1.631.702 2.47 1.072C26.524 5.8 21.766 2.18 18.986.39Z"
-                }, undefined, false, undefined, this),
-                /* @__PURE__ */ jsx_dev_runtime.jsxDEV("path", {
-                  fill: "currentColor",
-                  d: "M14.08 3.316c-3.075 2.587-4.7 4.912-4.7 6.723 0 3.603 6.778 6.083 9.388 6.736.402.1 8.996 2.293 10.656 7.063a68.796 68.796 0 0 0 3.282-2.13c4.19-2.91 4.326-3.924 4.33-3.967 0-.554-.529-1.796-4.062-3.843-2.591-1.5-5.882-2.918-8.784-4.168-2.813-1.212-5.035-2.17-6.04-2.946-1.849-1.428-1.927-3.612-1.572-5.388a38.154 38.154 0 0 0-2.497 1.92ZM17.625 30.3c-.804-.621-3.135-1.626-5.604-2.689-.806-.348-1.63-.702-2.47-1.073.96 3.162 5.719 6.783 8.499 8.572.154-.413.313-.922.416-1.464.297-1.56.016-2.687-.84-3.346h-.001Z"
-                }, undefined, false, undefined, this),
-                /* @__PURE__ */ jsx_dev_runtime.jsxDEV("path", {
-                  fill: "currentColor",
-                  d: "M22.954 32.184c3.076-2.588 4.702-4.912 4.702-6.725 0-3.603-6.777-6.083-9.39-6.735-.401-.1-8.994-2.294-10.655-7.064a68.787 68.787 0 0 0-3.282 2.13C.139 16.7.003 17.714 0 17.755c0 .554.528 1.796 4.061 3.843 2.592 1.5 5.882 2.918 8.784 4.169 2.813 1.21 5.036 2.17 6.043 2.945 1.848 1.428 1.926 3.613 1.571 5.388a38.121 38.121 0 0 0 2.497-1.92l-.002.004Z"
-                }, undefined, false, undefined, this)
-              ]
-            }, undefined, true, undefined, this)
-          }, undefined, false, undefined, this),
-          /* @__PURE__ */ jsx_dev_runtime.jsxDEV("h1", {
-            children: "\uD83D\uDE80 SEDA Asset Price Oracle"
-          }, undefined, false, undefined, this),
-          /* @__PURE__ */ jsx_dev_runtime.jsxDEV("div", {
-            className: "header-actions",
-            children: /* @__PURE__ */ jsx_dev_runtime.jsxDEV("button", {
-              onClick: clearAllData,
-              className: "clear-button",
-              title: "Clear all data and history",
-              children: "\uD83D\uDDD1️ Clear Data"
-            }, undefined, false, undefined, this)
-          }, undefined, false, undefined, this),
-          /* @__PURE__ */ jsx_dev_runtime.jsxDEV("p", {
-            children: "Select assets and pull real-time prices from the SEDA network"
-          }, undefined, false, undefined, this)
-        ]
-      }, undefined, true, undefined, this),
-      /* @__PURE__ */ jsx_dev_runtime.jsxDEV("div", {
-        className: "content",
-        children: [
-          /* @__PURE__ */ jsx_dev_runtime.jsxDEV("div", {
-            className: "asset-grid",
-            children: Object.entries(ASSET_CATEGORIES).map(([category, assets]) => /* @__PURE__ */ jsx_dev_runtime.jsxDEV("div", {
-              className: "asset-category",
-              children: [
-                /* @__PURE__ */ jsx_dev_runtime.jsxDEV("div", {
-                  className: "category-title",
-                  children: category
-                }, undefined, false, undefined, this),
-                assets.map((asset) => /* @__PURE__ */ jsx_dev_runtime.jsxDEV("div", {
-                  className: "asset-item",
-                  children: [
-                    /* @__PURE__ */ jsx_dev_runtime.jsxDEV("input", {
-                      type: "checkbox",
-                      id: asset.id,
-                      checked: selectedAssets.includes(asset.id),
-                      onChange: () => handleAssetToggle(asset.id)
-                    }, undefined, false, undefined, this),
-                    /* @__PURE__ */ jsx_dev_runtime.jsxDEV("label", {
-                      htmlFor: asset.id,
-                      children: asset.label
-                    }, undefined, false, undefined, this)
-                  ]
-                }, asset.id, true, undefined, this))
-              ]
-            }, category, true, undefined, this))
-          }, undefined, false, undefined, this),
-          /* @__PURE__ */ jsx_dev_runtime.jsxDEV("div", {
-            className: "button-container",
-            children: [
-              /* @__PURE__ */ jsx_dev_runtime.jsxDEV("button", {
-                className: "select-all-btn",
-                onClick: handleSelectAllAssets,
-                disabled: isLoading,
-                children: [
-                  "\uD83C\uDFAF Select All Assets (",
-                  Object.values(ASSET_CATEGORIES).flat().length,
-                  ")"
-                ]
-              }, undefined, true, undefined, this),
-              /* @__PURE__ */ jsx_dev_runtime.jsxDEV("button", {
-                className: "pull-prices-btn",
-                onClick: handlePullPrices,
-                disabled: isLoading || selectedAssets.length === 0,
-                children: isLoading ? "Fetching Prices..." : `Pull ${selectedAssets.length} Price${selectedAssets.length !== 1 ? "s" : ""}`
-              }, undefined, false, undefined, this)
-            ]
-          }, undefined, true, undefined, this),
-          error && /* @__PURE__ */ jsx_dev_runtime.jsxDEV("div", {
-            className: "error",
-            children: [
-              /* @__PURE__ */ jsx_dev_runtime.jsxDEV("strong", {
-                children: "Error:"
-              }, undefined, false, undefined, this),
-              " ",
-              error
-            ]
-          }, undefined, true, undefined, this),
-          results.length > 0 && /* @__PURE__ */ jsx_dev_runtime.jsxDEV("div", {
-            className: "current-results",
-            children: [
-              /* @__PURE__ */ jsx_dev_runtime.jsxDEV("h3", {
-                children: "\uD83D\uDCB0 Current Price Data"
-              }, undefined, false, undefined, this),
-              /* @__PURE__ */ jsx_dev_runtime.jsxDEV("p", {
-                className: "results-note",
-                children: "\uD83D\uDCCA Latest prices from your most recent data request (stored locally)"
-              }, undefined, false, undefined, this),
-              /* @__PURE__ */ jsx_dev_runtime.jsxDEV("div", {
-                className: "results-grid",
-                children: results.map((result, index) => /* @__PURE__ */ jsx_dev_runtime.jsxDEV("div", {
-                  className: "result-item",
-                  children: [
-                    /* @__PURE__ */ jsx_dev_runtime.jsxDEV("span", {
-                      className: "result-symbol",
-                      children: result.symbol
-                    }, undefined, false, undefined, this),
-                    /* @__PURE__ */ jsx_dev_runtime.jsxDEV("span", {
-                      className: "result-price",
-                      children: [
-                        "$",
-                        result.price.toFixed(2)
-                      ]
-                    }, undefined, true, undefined, this)
-                  ]
-                }, index, true, undefined, this))
-              }, undefined, false, undefined, this)
-            ]
-          }, undefined, true, undefined, this),
-          requestHistory.length > 0 && /* @__PURE__ */ jsx_dev_runtime.jsxDEV("div", {
-            className: "history",
-            children: [
-              /* @__PURE__ */ jsx_dev_runtime.jsxDEV("h3", {
-                children: "\uD83D\uDCDA Request History (Persisted in Browser)"
-              }, undefined, false, undefined, this),
-              /* @__PURE__ */ jsx_dev_runtime.jsxDEV("p", {
-                className: "history-note",
-                children: "\uD83D\uDCBE Data is automatically saved to your browser's local storage and will persist across sessions."
-              }, undefined, false, undefined, this),
-              requestHistory.map((item, index) => /* @__PURE__ */ jsx_dev_runtime.jsxDEV("div", {
-                className: "history-item",
-                children: [
-                  /* @__PURE__ */ jsx_dev_runtime.jsxDEV("div", {
-                    className: "history-header",
-                    children: [
-                      /* @__PURE__ */ jsx_dev_runtime.jsxDEV("span", {
-                        className: "history-time",
-                        children: new Date(item.timestamp).toLocaleString()
-                      }, undefined, false, undefined, this),
-                      /* @__PURE__ */ jsx_dev_runtime.jsxDEV("div", {
-                        className: "history-links",
-                        children: [
-                          /* @__PURE__ */ jsx_dev_runtime.jsxDEV("a", {
-                            href: item.explorerLink,
-                            target: "_blank",
-                            rel: "noopener noreferrer",
-                            className: "history-link",
-                            children: "\uD83D\uDD17 Explorer"
-                          }, undefined, false, undefined, this),
-                          item.splitRequests && item.allExplorerLinks && item.allExplorerLinks.length > 1 && /* @__PURE__ */ jsx_dev_runtime.jsxDEV("span", {
-                            className: "split-indicator",
-                            children: [
-                              "\uD83D\uDD04 Split (",
-                              item.requestCount,
-                              " requests)"
-                            ]
-                          }, undefined, true, undefined, this)
-                        ]
-                      }, undefined, true, undefined, this)
-                    ]
-                  }, undefined, true, undefined, this),
-                  /* @__PURE__ */ jsx_dev_runtime.jsxDEV("div", {
-                    className: "history-assets",
-                    children: [
-                      /* @__PURE__ */ jsx_dev_runtime.jsxDEV("strong", {
-                        children: "Assets:"
-                      }, undefined, false, undefined, this),
-                      " ",
-                      item.assets.join(", ")
-                    ]
-                  }, undefined, true, undefined, this),
-                  /* @__PURE__ */ jsx_dev_runtime.jsxDEV("div", {
-                    className: "history-results",
-                    children: item.results.map((result, idx) => /* @__PURE__ */ jsx_dev_runtime.jsxDEV("span", {
-                      className: "history-price",
-                      children: [
-                        result.symbol,
-                        ": $",
-                        result.price.toFixed(2)
-                      ]
-                    }, idx, true, undefined, this))
-                  }, undefined, false, undefined, this),
-                  item.splitRequests && item.allExplorerLinks && item.allExplorerLinks.length > 1 && /* @__PURE__ */ jsx_dev_runtime.jsxDEV("div", {
-                    className: "history-split-links",
-                    children: [
-                      /* @__PURE__ */ jsx_dev_runtime.jsxDEV("strong", {
-                        children: "All DR Links:"
-                      }, undefined, false, undefined, this),
-                      item.allExplorerLinks.map((link, idx) => /* @__PURE__ */ jsx_dev_runtime.jsxDEV("a", {
-                        href: link,
-                        target: "_blank",
-                        rel: "noopener noreferrer",
-                        className: "history-split-link",
-                        children: [
-                          "DR #",
-                          idx + 1
-                        ]
-                      }, idx, true, undefined, this))
-                    ]
-                  }, undefined, true, undefined, this),
-                  item.gasOptimization && /* @__PURE__ */ jsx_dev_runtime.jsxDEV("div", {
-                    className: "history-gas-info",
-                    children: [
-                      /* @__PURE__ */ jsx_dev_runtime.jsxDEV("div", {
-                        className: "gas-detail",
-                        children: [
-                          /* @__PURE__ */ jsx_dev_runtime.jsxDEV("span", {
-                            className: "gas-label",
-                            children: "Total Estimated Cost:"
-                          }, undefined, false, undefined, this),
-                          /* @__PURE__ */ jsx_dev_runtime.jsxDEV("span", {
-                            className: "gas-value",
-                            children: [
-                              item.gasOptimization.totalEstimatedCost,
-                              " SEDA"
-                            ]
-                          }, undefined, true, undefined, this)
-                        ]
-                      }, undefined, true, undefined, this),
-                      /* @__PURE__ */ jsx_dev_runtime.jsxDEV("div", {
-                        className: "gas-detail",
-                        children: [
-                          /* @__PURE__ */ jsx_dev_runtime.jsxDEV("span", {
-                            className: "gas-label",
-                            children: "Optimized Chunks:"
-                          }, undefined, false, undefined, this),
-                          /* @__PURE__ */ jsx_dev_runtime.jsxDEV("span", {
-                            className: "gas-value",
-                            children: [
-                              item.gasOptimization.chunks.length,
-                              " DRs"
-                            ]
-                          }, undefined, true, undefined, this)
-                        ]
-                      }, undefined, true, undefined, this)
-                    ]
-                  }, undefined, true, undefined, this)
-                ]
-              }, index, true, undefined, this))
-            ]
-          }, undefined, true, undefined, this),
-          (showLoadingPopup || showSuccessPopup) && /* @__PURE__ */ jsx_dev_runtime.jsxDEV("div", {
-            className: "modern-modal-overlay",
-            style: { pointerEvents: "none" },
+        children: /* @__PURE__ */ jsx_dev_runtime.jsxDEV("div", {
+          className: "header-content",
+          children: /* @__PURE__ */ jsx_dev_runtime.jsxDEV("div", {
+            className: "header-top",
             children: /* @__PURE__ */ jsx_dev_runtime.jsxDEV("div", {
-              className: "modern-modal white-card",
-              style: { pointerEvents: "auto" },
+              className: "logo-section",
               children: [
                 /* @__PURE__ */ jsx_dev_runtime.jsxDEV("div", {
-                  className: `modal-header${showLoadingPopup ? "" : " no-stepper"}`,
+                  className: "seda-logo-container",
+                  children: /* @__PURE__ */ jsx_dev_runtime.jsxDEV("img", {
+                    src: "https://cdn.prod.website-files.com/672ce6bb6218cb69510f13e8/675b12e267dc6bc37ce28c83_SEDA%20Logo%20White%20(1).svg",
+                    alt: "SEDA",
+                    className: "seda-logo"
+                  }, undefined, false, undefined, this)
+                }, undefined, false, undefined, this),
+                /* @__PURE__ */ jsx_dev_runtime.jsxDEV("div", {
+                  className: "seda-title",
                   children: [
-                    /* @__PURE__ */ jsx_dev_runtime.jsxDEV("span", {
-                      className: "modal-title",
-                      children: showLoadingPopup ? "Fetching Prices..." : "Data Request Successful!"
+                    /* @__PURE__ */ jsx_dev_runtime.jsxDEV("h1", {
+                      children: "Asset Price Oracle"
                     }, undefined, false, undefined, this),
-                    /* @__PURE__ */ jsx_dev_runtime.jsxDEV("button", {
-                      className: "close-btn",
-                      onClick: () => {
-                        setShowLoadingPopup(false);
-                        setShowSuccessPopup(false);
-                      },
-                      children: "×"
+                    /* @__PURE__ */ jsx_dev_runtime.jsxDEV("p", {
+                      children: "Real-time market data powered by SEDA Network"
                     }, undefined, false, undefined, this)
                   ]
                 }, undefined, true, undefined, this),
-                showLoadingPopup && /* @__PURE__ */ jsx_dev_runtime.jsxDEV(jsx_dev_runtime.Fragment, {
-                  children: /* @__PURE__ */ jsx_dev_runtime.jsxDEV("div", {
-                    className: "stepper animated-stepper",
-                    children: drStatuses.map((dr, idx) => /* @__PURE__ */ jsx_dev_runtime.jsxDEV("div", {
-                      className: `step ${dr.status}`,
-                      children: [
-                        /* @__PURE__ */ jsx_dev_runtime.jsxDEV("div", {
-                          className: "step-icon",
-                          children: dr.status === "finalized" ? /* @__PURE__ */ jsx_dev_runtime.jsxDEV("span", {
-                            className: "checkmark",
-                            children: "✔"
-                          }, undefined, false, undefined, this) : dr.status === "error" ? /* @__PURE__ */ jsx_dev_runtime.jsxDEV("span", {
-                            className: "error-mark",
-                            children: "!"
-                          }, undefined, false, undefined, this) : /* @__PURE__ */ jsx_dev_runtime.jsxDEV("span", {
-                            className: "spinner"
-                          }, undefined, false, undefined, this)
-                        }, undefined, false, undefined, this),
-                        /* @__PURE__ */ jsx_dev_runtime.jsxDEV("div", {
-                          className: "step-label",
-                          children: [
-                            "DR #",
-                            idx + 1
-                          ]
-                        }, undefined, true, undefined, this)
-                      ]
-                    }, dr.drId, true, undefined, this))
-                  }, undefined, false, undefined, this)
-                }, undefined, false, undefined, this),
-                !showLoadingPopup && showSuccessPopup && /* @__PURE__ */ jsx_dev_runtime.jsxDEV(jsx_dev_runtime.Fragment, {
+                /* @__PURE__ */ jsx_dev_runtime.jsxDEV("div", {
+                  className: "data-provider",
                   children: [
-                    /* @__PURE__ */ jsx_dev_runtime.jsxDEV("div", {
-                      className: "success-check",
-                      children: "✔"
+                    /* @__PURE__ */ jsx_dev_runtime.jsxDEV("span", {
+                      className: "data-by",
+                      children: "Data by"
                     }, undefined, false, undefined, this),
-                    currentSplitRequests && /* @__PURE__ */ jsx_dev_runtime.jsxDEV("div", {
-                      className: "gas-optimization-info",
-                      children: [
-                        /* @__PURE__ */ jsx_dev_runtime.jsxDEV("div", {
-                          className: "gas-optimization-header",
-                          children: [
-                            /* @__PURE__ */ jsx_dev_runtime.jsxDEV("span", {
-                              className: "gas-icon",
-                              children: "⛽"
-                            }, undefined, false, undefined, this),
-                            /* @__PURE__ */ jsx_dev_runtime.jsxDEV("span", {
-                              children: "Dynamic Gas Optimization"
-                            }, undefined, false, undefined, this)
-                          ]
-                        }, undefined, true, undefined, this),
-                        /* @__PURE__ */ jsx_dev_runtime.jsxDEV("div", {
-                          className: "gas-optimization-details",
-                          children: [
-                            /* @__PURE__ */ jsx_dev_runtime.jsxDEV("div", {
-                              className: "gas-detail",
-                              children: [
-                                /* @__PURE__ */ jsx_dev_runtime.jsxDEV("span", {
-                                  className: "gas-label",
-                                  children: "Total Requests:"
-                                }, undefined, false, undefined, this),
-                                /* @__PURE__ */ jsx_dev_runtime.jsxDEV("span", {
-                                  className: "gas-value",
-                                  children: currentRequestCount
-                                }, undefined, false, undefined, this)
-                              ]
-                            }, undefined, true, undefined, this),
-                            /* @__PURE__ */ jsx_dev_runtime.jsxDEV("div", {
-                              className: "gas-detail",
-                              children: [
-                                /* @__PURE__ */ jsx_dev_runtime.jsxDEV("span", {
-                                  className: "gas-label",
-                                  children: "Assets per DR:"
-                                }, undefined, false, undefined, this),
-                                /* @__PURE__ */ jsx_dev_runtime.jsxDEV("span", {
-                                  className: "gas-value",
-                                  children: "10 (testing new gas)"
-                                }, undefined, false, undefined, this)
-                              ]
-                            }, undefined, true, undefined, this),
-                            /* @__PURE__ */ jsx_dev_runtime.jsxDEV("div", {
-                              className: "gas-detail",
-                              children: [
-                                /* @__PURE__ */ jsx_dev_runtime.jsxDEV("span", {
-                                  className: "gas-label",
-                                  children: "Network Status:"
-                                }, undefined, false, undefined, this),
-                                /* @__PURE__ */ jsx_dev_runtime.jsxDEV("span", {
-                                  className: "gas-value",
-                                  children: "✅ Stable"
-                                }, undefined, false, undefined, this)
-                              ]
-                            }, undefined, true, undefined, this)
-                          ]
-                        }, undefined, true, undefined, this)
-                      ]
-                    }, undefined, true, undefined, this),
                     /* @__PURE__ */ jsx_dev_runtime.jsxDEV("div", {
-                      className: "results-list",
-                      children: selectedAssets.map((assetId) => {
-                        let foundResult = null;
-                        for (const dr of drStatuses) {
-                          if (dr.results && dr.results.length > 0) {
-                            for (const result of dr.results) {
-                              if (resultMatchesAsset(result, assetId)) {
-                                foundResult = result;
-                                break;
-                              }
-                            }
-                          }
-                          if (foundResult)
-                            break;
-                        }
-                        const assetLabel = (() => {
-                          for (const assets of Object.values(ASSET_CATEGORIES)) {
-                            const found = assets.find((a) => a.id === assetId);
-                            if (found)
-                              return found.label;
-                          }
-                          return assetId;
-                        })();
-                        return /* @__PURE__ */ jsx_dev_runtime.jsxDEV("div", {
-                          className: "result-row",
-                          children: [
-                            /* @__PURE__ */ jsx_dev_runtime.jsxDEV("span", {
-                              className: "result-asset",
-                              children: /* @__PURE__ */ jsx_dev_runtime.jsxDEV("b", {
-                                children: assetId
-                              }, undefined, false, undefined, this)
-                            }, undefined, false, undefined, this),
-                            foundResult ? /* @__PURE__ */ jsx_dev_runtime.jsxDEV("span", {
-                              className: "result-price",
-                              style: { color: "#22b14c", fontWeight: 600 },
-                              children: [
-                                "$",
-                                foundResult.price.toFixed(2)
-                              ]
-                            }, undefined, true, undefined, this) : /* @__PURE__ */ jsx_dev_runtime.jsxDEV("span", {
-                              className: "result-price no-data",
-                              children: "No Data"
-                            }, undefined, false, undefined, this)
-                          ]
-                        }, assetId, true, undefined, this);
-                      })
+                      className: "dxfeeds-logo",
+                      children: /* @__PURE__ */ jsx_dev_runtime.jsxDEV("img", {
+                        src: "https://dxfeed.com/wp-content/themes/dxfeed_new/dist/images/logo-dxFeed-white.a620287d.svg",
+                        alt: "DxFeeds",
+                        className: "dxfeeds-logo-img"
+                      }, undefined, false, undefined, this)
                     }, undefined, false, undefined, this)
                   ]
                 }, undefined, true, undefined, this)
               ]
             }, undefined, true, undefined, this)
-          }, undefined, false, undefined, this),
-          results.length > 0 && !showLoadingPopup && !showSuccessPopup && /* @__PURE__ */ jsx_dev_runtime.jsxDEV("div", {
-            className: "results latest-results",
+          }, undefined, false, undefined, this)
+        }, undefined, false, undefined, this)
+      }, undefined, false, undefined, this),
+      /* @__PURE__ */ jsx_dev_runtime.jsxDEV("div", {
+        className: "main-content",
+        children: [
+          /* @__PURE__ */ jsx_dev_runtime.jsxDEV("section", {
+            className: "asset-selection",
             children: [
-              /* @__PURE__ */ jsx_dev_runtime.jsxDEV("h3", {
-                children: "Latest Price Results"
-              }, undefined, false, undefined, this),
-              /* @__PURE__ */ jsx_dev_runtime.jsxDEV("table", {
-                className: "results-table",
+              /* @__PURE__ */ jsx_dev_runtime.jsxDEV("div", {
+                className: "selection-controls",
                 children: [
-                  /* @__PURE__ */ jsx_dev_runtime.jsxDEV("thead", {
-                    children: /* @__PURE__ */ jsx_dev_runtime.jsxDEV("tr", {
+                  /* @__PURE__ */ jsx_dev_runtime.jsxDEV("h2", {
+                    children: "Select Assets"
+                  }, undefined, false, undefined, this),
+                  /* @__PURE__ */ jsx_dev_runtime.jsxDEV("div", {
+                    className: "control-buttons",
+                    children: [
+                      /* @__PURE__ */ jsx_dev_runtime.jsxDEV("button", {
+                        className: "btn btn-secondary btn-small",
+                        onClick: handleSelectAllAssets,
+                        children: "Select All"
+                      }, undefined, false, undefined, this),
+                      /* @__PURE__ */ jsx_dev_runtime.jsxDEV("button", {
+                        className: "btn btn-secondary btn-small",
+                        onClick: handleClearSelection,
+                        children: "Clear"
+                      }, undefined, false, undefined, this)
+                    ]
+                  }, undefined, true, undefined, this)
+                ]
+              }, undefined, true, undefined, this),
+              Object.entries(ASSET_CATEGORIES).map(([categoryName, assets]) => /* @__PURE__ */ jsx_dev_runtime.jsxDEV("div", {
+                className: "asset-category",
+                children: [
+                  /* @__PURE__ */ jsx_dev_runtime.jsxDEV("div", {
+                    className: "category-header",
+                    children: [
+                      /* @__PURE__ */ jsx_dev_runtime.jsxDEV("h3", {
+                        children: categoryName
+                      }, undefined, false, undefined, this),
+                      /* @__PURE__ */ jsx_dev_runtime.jsxDEV("button", {
+                        className: "btn btn-secondary btn-small",
+                        onClick: () => handleSelectCategory(categoryName),
+                        children: "Select Category"
+                      }, undefined, false, undefined, this)
+                    ]
+                  }, undefined, true, undefined, this),
+                  /* @__PURE__ */ jsx_dev_runtime.jsxDEV("div", {
+                    className: "asset-grid",
+                    children: assets.map((asset) => /* @__PURE__ */ jsx_dev_runtime.jsxDEV("label", {
+                      className: "asset-checkbox",
                       children: [
-                        /* @__PURE__ */ jsx_dev_runtime.jsxDEV("th", {
-                          children: "Symbol"
+                        /* @__PURE__ */ jsx_dev_runtime.jsxDEV("input", {
+                          type: "checkbox",
+                          checked: selectedAssets.includes(asset.id),
+                          onChange: () => handleAssetToggle(asset.id)
                         }, undefined, false, undefined, this),
-                        /* @__PURE__ */ jsx_dev_runtime.jsxDEV("th", {
-                          children: "Price"
+                        /* @__PURE__ */ jsx_dev_runtime.jsxDEV("span", {
+                          children: asset.label
                         }, undefined, false, undefined, this)
                       ]
-                    }, undefined, true, undefined, this)
-                  }, undefined, false, undefined, this),
-                  /* @__PURE__ */ jsx_dev_runtime.jsxDEV("tbody", {
-                    children: selectedAssets.map((assetId, idx) => {
-                      const found = results.find((r) => resultMatchesAsset(r, assetId));
-                      return /* @__PURE__ */ jsx_dev_runtime.jsxDEV("tr", {
-                        children: [
-                          /* @__PURE__ */ jsx_dev_runtime.jsxDEV("td", {
-                            children: assetId
-                          }, undefined, false, undefined, this),
-                          /* @__PURE__ */ jsx_dev_runtime.jsxDEV("td", {
-                            className: found && !isNaN(found.price) ? "price-green" : "no-data",
-                            children: found && !isNaN(found.price) ? `$${found.price.toFixed(2)}` : /* @__PURE__ */ jsx_dev_runtime.jsxDEV("span", {
-                              className: "no-data",
-                              children: "No Data"
-                            }, undefined, false, undefined, this)
-                          }, undefined, false, undefined, this)
-                        ]
-                      }, assetId, true, undefined, this);
-                    })
+                    }, asset.id, true, undefined, this))
                   }, undefined, false, undefined, this)
                 ]
-              }, undefined, true, undefined, this)
+              }, categoryName, true, undefined, this))
+            ]
+          }, undefined, true, undefined, this),
+          /* @__PURE__ */ jsx_dev_runtime.jsxDEV("section", {
+            className: "action-section",
+            children: [
+              /* @__PURE__ */ jsx_dev_runtime.jsxDEV("div", {
+                className: "selection-summary",
+                children: /* @__PURE__ */ jsx_dev_runtime.jsxDEV("p", {
+                  children: [
+                    /* @__PURE__ */ jsx_dev_runtime.jsxDEV("strong", {
+                      children: selectedAssets.length
+                    }, undefined, false, undefined, this),
+                    " assets selected"
+                  ]
+                }, undefined, true, undefined, this)
+              }, undefined, false, undefined, this),
+              /* @__PURE__ */ jsx_dev_runtime.jsxDEV("button", {
+                className: "btn btn-primary",
+                onClick: handlePullPrices,
+                disabled: selectedAssets.length === 0 || isLoading,
+                children: isLoading ? /* @__PURE__ */ jsx_dev_runtime.jsxDEV(jsx_dev_runtime.Fragment, {
+                  children: [
+                    /* @__PURE__ */ jsx_dev_runtime.jsxDEV("div", {
+                      className: "loading-spinner"
+                    }, undefined, false, undefined, this),
+                    "Processing..."
+                  ]
+                }, undefined, true, undefined, this) : "Pull Prices"
+              }, undefined, false, undefined, this)
+            ]
+          }, undefined, true, undefined, this),
+          currentResults.length > 0 && /* @__PURE__ */ jsx_dev_runtime.jsxDEV("section", {
+            className: "results-section",
+            children: [
+              /* @__PURE__ */ jsx_dev_runtime.jsxDEV("div", {
+                className: "results-header",
+                children: [
+                  /* @__PURE__ */ jsx_dev_runtime.jsxDEV("h2", {
+                    children: "Current Results"
+                  }, undefined, false, undefined, this),
+                  /* @__PURE__ */ jsx_dev_runtime.jsxDEV("div", {
+                    className: "results-controls",
+                    children: /* @__PURE__ */ jsx_dev_runtime.jsxDEV("div", {
+                      className: "dropdown",
+                      children: [
+                        /* @__PURE__ */ jsx_dev_runtime.jsxDEV("button", {
+                          className: "btn btn-secondary btn-small",
+                          children: "Actions"
+                        }, undefined, false, undefined, this),
+                        /* @__PURE__ */ jsx_dev_runtime.jsxDEV("div", {
+                          className: "dropdown-content",
+                          children: [
+                            /* @__PURE__ */ jsx_dev_runtime.jsxDEV("a", {
+                              href: "#",
+                              onClick: clearAllData,
+                              children: "Clear All Data"
+                            }, undefined, false, undefined, this),
+                            /* @__PURE__ */ jsx_dev_runtime.jsxDEV("a", {
+                              href: "#",
+                              onClick: () => setShowModal(true),
+                              children: "View History"
+                            }, undefined, false, undefined, this)
+                          ]
+                        }, undefined, true, undefined, this)
+                      ]
+                    }, undefined, true, undefined, this)
+                  }, undefined, false, undefined, this)
+                ]
+              }, undefined, true, undefined, this),
+              /* @__PURE__ */ jsx_dev_runtime.jsxDEV("div", {
+                className: "results-grid",
+                children: currentResults.map((result, index) => /* @__PURE__ */ jsx_dev_runtime.jsxDEV("div", {
+                  className: "result-card",
+                  children: [
+                    /* @__PURE__ */ jsx_dev_runtime.jsxDEV("div", {
+                      className: "result-symbol",
+                      children: result.symbol
+                    }, undefined, false, undefined, this),
+                    /* @__PURE__ */ jsx_dev_runtime.jsxDEV("div", {
+                      className: "result-price",
+                      children: [
+                        "$",
+                        typeof result.price === "number" ? result.price.toFixed(2) : "--"
+                      ]
+                    }, undefined, true, undefined, this)
+                  ]
+                }, `${result.symbol || "unknown"}-${index}`, true, undefined, this))
+              }, undefined, false, undefined, this)
+            ]
+          }, undefined, true, undefined, this),
+          requestHistory.length > 0 && /* @__PURE__ */ jsx_dev_runtime.jsxDEV("section", {
+            className: "history-section",
+            children: [
+              /* @__PURE__ */ jsx_dev_runtime.jsxDEV("div", {
+                className: "history-header",
+                children: /* @__PURE__ */ jsx_dev_runtime.jsxDEV("h2", {
+                  children: "Request History"
+                }, undefined, false, undefined, this)
+              }, undefined, false, undefined, this),
+              /* @__PURE__ */ jsx_dev_runtime.jsxDEV("div", {
+                className: "history-list",
+                children: requestHistory.slice(0, 5).map((history, idx) => /* @__PURE__ */ jsx_dev_runtime.jsxDEV("div", {
+                  className: "history-item",
+                  children: [
+                    /* @__PURE__ */ jsx_dev_runtime.jsxDEV("div", {
+                      className: "history-info",
+                      children: [
+                        /* @__PURE__ */ jsx_dev_runtime.jsxDEV("div", {
+                          className: "history-time",
+                          children: history.timestamp
+                        }, undefined, false, undefined, this),
+                        /* @__PURE__ */ jsx_dev_runtime.jsxDEV("a", {
+                          href: history.explorerLink,
+                          target: "_blank",
+                          rel: "noopener noreferrer",
+                          className: "history-more",
+                          children: "View on Explorer"
+                        }, undefined, false, undefined, this)
+                      ]
+                    }, undefined, true, undefined, this),
+                    /* @__PURE__ */ jsx_dev_runtime.jsxDEV("div", {
+                      className: "history-assets",
+                      children: [
+                        history.assets.length,
+                        " assets • ",
+                        history.requestCount,
+                        " requests"
+                      ]
+                    }, undefined, true, undefined, this),
+                    /* @__PURE__ */ jsx_dev_runtime.jsxDEV("div", {
+                      className: "history-results",
+                      children: [
+                        history.results.slice(0, 3).map((result, index) => /* @__PURE__ */ jsx_dev_runtime.jsxDEV("span", {
+                          className: "history-result",
+                          children: [
+                            result.symbol,
+                            ": $",
+                            typeof result.price === "number" ? result.price.toFixed(2) : "--"
+                          ]
+                        }, `${result.symbol || "unknown"}-${index}`, true, undefined, this)),
+                        history.results.length > 3 && /* @__PURE__ */ jsx_dev_runtime.jsxDEV("span", {
+                          className: "history-result",
+                          children: [
+                            "+",
+                            history.results.length - 3,
+                            " more"
+                          ]
+                        }, undefined, true, undefined, this)
+                      ]
+                    }, undefined, true, undefined, this)
+                  ]
+                }, `${history.id || "unknown"}-${history.timestamp || idx}`, true, undefined, this))
+              }, undefined, false, undefined, this)
             ]
           }, undefined, true, undefined, this)
         ]
-      }, undefined, true, undefined, this)
+      }, undefined, true, undefined, this),
+      showLoadingPopup && /* @__PURE__ */ jsx_dev_runtime.jsxDEV("div", {
+        className: "loading-popup-overlay",
+        children: /* @__PURE__ */ jsx_dev_runtime.jsxDEV("div", {
+          className: "loading-popup",
+          children: [
+            /* @__PURE__ */ jsx_dev_runtime.jsxDEV("div", {
+              className: "loading-header",
+              children: [
+                loadingInfo.stage === "completed" ? /* @__PURE__ */ jsx_dev_runtime.jsxDEV("div", {
+                  className: "checkmark-large",
+                  children: "✓"
+                }, undefined, false, undefined, this) : /* @__PURE__ */ jsx_dev_runtime.jsxDEV("div", {
+                  className: "loading-spinner-large"
+                }, undefined, false, undefined, this),
+                /* @__PURE__ */ jsx_dev_runtime.jsxDEV("h3", {
+                  children: loadingInfo.stage === "completed" ? "Data Request Complete" : "Processing Data Request"
+                }, undefined, false, undefined, this)
+              ]
+            }, undefined, true, undefined, this),
+            /* @__PURE__ */ jsx_dev_runtime.jsxDEV("div", {
+              className: "loading-content",
+              children: [
+                /* @__PURE__ */ jsx_dev_runtime.jsxDEV("div", {
+                  className: "loading-message",
+                  children: loadingInfo.message
+                }, undefined, false, undefined, this),
+                /* @__PURE__ */ jsx_dev_runtime.jsxDEV("div", {
+                  className: "loading-progress",
+                  children: [
+                    /* @__PURE__ */ jsx_dev_runtime.jsxDEV("div", {
+                      className: "progress-bar",
+                      children: /* @__PURE__ */ jsx_dev_runtime.jsxDEV("div", {
+                        className: "progress-fill",
+                        style: { width: `${loadingInfo.completedCount / loadingInfo.drCount * 100}%` }
+                      }, undefined, false, undefined, this)
+                    }, undefined, false, undefined, this),
+                    /* @__PURE__ */ jsx_dev_runtime.jsxDEV("div", {
+                      className: "progress-text",
+                      children: [
+                        loadingInfo.completedCount,
+                        " of ",
+                        loadingInfo.drCount,
+                        " data requests completed"
+                      ]
+                    }, undefined, true, undefined, this)
+                  ]
+                }, undefined, true, undefined, this),
+                /* @__PURE__ */ jsx_dev_runtime.jsxDEV("div", {
+                  className: "loading-info",
+                  children: [
+                    /* @__PURE__ */ jsx_dev_runtime.jsxDEV("h4", {
+                      children: "What's happening:"
+                    }, undefined, false, undefined, this),
+                    /* @__PURE__ */ jsx_dev_runtime.jsxDEV("ul", {
+                      children: [
+                        loadingInfo.stage === "preparing" && /* @__PURE__ */ jsx_dev_runtime.jsxDEV(jsx_dev_runtime.Fragment, {
+                          children: [
+                            /* @__PURE__ */ jsx_dev_runtime.jsxDEV("li", {
+                              children: [
+                                "\uD83D\uDCCA Preparing ",
+                                loadingInfo.totalAssets,
+                                " assets for submission"
+                              ]
+                            }, undefined, true, undefined, this),
+                            /* @__PURE__ */ jsx_dev_runtime.jsxDEV("li", {
+                              children: [
+                                "\uD83D\uDD27 Splitting into ",
+                                loadingInfo.drCount,
+                                " data requests (8 assets per request)"
+                              ]
+                            }, undefined, true, undefined, this),
+                            /* @__PURE__ */ jsx_dev_runtime.jsxDEV("li", {
+                              children: "⚡ Optimizing for SEDA Network efficiency"
+                            }, undefined, false, undefined, this)
+                          ]
+                        }, undefined, true, undefined, this),
+                        loadingInfo.stage === "submitting" && /* @__PURE__ */ jsx_dev_runtime.jsxDEV(jsx_dev_runtime.Fragment, {
+                          children: [
+                            /* @__PURE__ */ jsx_dev_runtime.jsxDEV("li", {
+                              children: "\uD83D\uDE80 Submitting data requests to SEDA Network"
+                            }, undefined, false, undefined, this),
+                            /* @__PURE__ */ jsx_dev_runtime.jsxDEV("li", {
+                              children: "\uD83D\uDCB0 Calculating gas requirements"
+                            }, undefined, false, undefined, this),
+                            /* @__PURE__ */ jsx_dev_runtime.jsxDEV("li", {
+                              children: "\uD83D\uDD10 Reading chain data"
+                            }, undefined, false, undefined, this)
+                          ]
+                        }, undefined, true, undefined, this),
+                        loadingInfo.stage === "submitted" && /* @__PURE__ */ jsx_dev_runtime.jsxDEV(jsx_dev_runtime.Fragment, {
+                          children: [
+                            /* @__PURE__ */ jsx_dev_runtime.jsxDEV("li", {
+                              children: "✅ Data requests successfully submitted!"
+                            }, undefined, false, undefined, this),
+                            /* @__PURE__ */ jsx_dev_runtime.jsxDEV("li", {
+                              children: "\uD83C\uDF10 Waiting for SEDA Network consensus"
+                            }, undefined, false, undefined, this),
+                            /* @__PURE__ */ jsx_dev_runtime.jsxDEV("li", {
+                              children: "⏱️ This typically takes 30-60 seconds"
+                            }, undefined, false, undefined, this)
+                          ]
+                        }, undefined, true, undefined, this),
+                        loadingInfo.stage === "polling" && /* @__PURE__ */ jsx_dev_runtime.jsxDEV(jsx_dev_runtime.Fragment, {
+                          children: [
+                            /* @__PURE__ */ jsx_dev_runtime.jsxDEV("li", {
+                              children: "\uD83D\uDD0D Polling SEDA Network for results"
+                            }, undefined, false, undefined, this),
+                            /* @__PURE__ */ jsx_dev_runtime.jsxDEV("li", {
+                              children: "\uD83E\uDD1D Waiting for validator consensus"
+                            }, undefined, false, undefined, this),
+                            /* @__PURE__ */ jsx_dev_runtime.jsxDEV("li", {
+                              children: "\uD83D\uDCC8 Fetching real-time market data"
+                            }, undefined, false, undefined, this)
+                          ]
+                        }, undefined, true, undefined, this),
+                        loadingInfo.stage === "completed" && /* @__PURE__ */ jsx_dev_runtime.jsxDEV(jsx_dev_runtime.Fragment, {
+                          children: [
+                            /* @__PURE__ */ jsx_dev_runtime.jsxDEV("li", {
+                              children: "\uD83C\uDF89 All data requests completed!"
+                            }, undefined, false, undefined, this),
+                            /* @__PURE__ */ jsx_dev_runtime.jsxDEV("li", {
+                              children: "\uD83D\uDCBE Results stored in browser cache"
+                            }, undefined, false, undefined, this),
+                            /* @__PURE__ */ jsx_dev_runtime.jsxDEV("li", {
+                              children: "\uD83D\uDCCA Ready to view your price data"
+                            }, undefined, false, undefined, this)
+                          ]
+                        }, undefined, true, undefined, this)
+                      ]
+                    }, undefined, true, undefined, this)
+                  ]
+                }, undefined, true, undefined, this),
+                currentResults.length > 0 && /* @__PURE__ */ jsx_dev_runtime.jsxDEV("div", {
+                  className: "price-results-table",
+                  children: [
+                    /* @__PURE__ */ jsx_dev_runtime.jsxDEV("h4", {
+                      children: "\uD83D\uDCCA Price Results:"
+                    }, undefined, false, undefined, this),
+                    /* @__PURE__ */ jsx_dev_runtime.jsxDEV("div", {
+                      className: "price-table",
+                      children: currentResults.map((result, index) => /* @__PURE__ */ jsx_dev_runtime.jsxDEV("div", {
+                        className: "price-row",
+                        children: [
+                          /* @__PURE__ */ jsx_dev_runtime.jsxDEV("span", {
+                            className: "price-symbol",
+                            children: result.symbol
+                          }, undefined, false, undefined, this),
+                          /* @__PURE__ */ jsx_dev_runtime.jsxDEV("span", {
+                            className: "price-value",
+                            children: [
+                              "$",
+                              typeof result.price === "number" ? result.price.toFixed(2) : "--"
+                            ]
+                          }, undefined, true, undefined, this)
+                        ]
+                      }, `${result.symbol || "unknown"}-${index}`, true, undefined, this))
+                    }, undefined, false, undefined, this)
+                  ]
+                }, undefined, true, undefined, this)
+              ]
+            }, undefined, true, undefined, this),
+            /* @__PURE__ */ jsx_dev_runtime.jsxDEV("div", {
+              className: "loading-footer",
+              children: /* @__PURE__ */ jsx_dev_runtime.jsxDEV("button", {
+                className: "btn btn-secondary",
+                onClick: () => setShowLoadingPopup(false),
+                disabled: loadingInfo.stage !== "completed",
+                children: loadingInfo.stage === "completed" ? "Close" : "Processing..."
+              }, undefined, false, undefined, this)
+            }, undefined, false, undefined, this)
+          ]
+        }, undefined, true, undefined, this)
+      }, undefined, false, undefined, this),
+      showModal && /* @__PURE__ */ jsx_dev_runtime.jsxDEV("div", {
+        className: "modal-overlay",
+        onClick: () => setShowModal(false),
+        children: /* @__PURE__ */ jsx_dev_runtime.jsxDEV("div", {
+          className: "modal",
+          onClick: (e) => e.stopPropagation(),
+          children: [
+            /* @__PURE__ */ jsx_dev_runtime.jsxDEV("h3", {
+              children: "Data Request Status"
+            }, undefined, false, undefined, this),
+            /* @__PURE__ */ jsx_dev_runtime.jsxDEV("p", {
+              children: "Monitoring data request progress..."
+            }, undefined, false, undefined, this),
+            /* @__PURE__ */ jsx_dev_runtime.jsxDEV("div", {
+              className: "dr-status",
+              children: drStatuses.map((status, index) => /* @__PURE__ */ jsx_dev_runtime.jsxDEV("div", {
+                className: `dr-item ${status.status}`,
+                children: /* @__PURE__ */ jsx_dev_runtime.jsxDEV("div", {
+                  children: [
+                    /* @__PURE__ */ jsx_dev_runtime.jsxDEV("strong", {
+                      children: [
+                        "DR ",
+                        index + 1,
+                        ":"
+                      ]
+                    }, undefined, true, undefined, this),
+                    " ",
+                    status.status,
+                    status.blockHeight && /* @__PURE__ */ jsx_dev_runtime.jsxDEV("span", {
+                      children: [
+                        " • Block: ",
+                        status.blockHeight
+                      ]
+                    }, undefined, true, undefined, this),
+                    status.error && /* @__PURE__ */ jsx_dev_runtime.jsxDEV("div", {
+                      className: "error",
+                      children: status.error
+                    }, undefined, false, undefined, this)
+                  ]
+                }, undefined, true, undefined, this)
+              }, index, false, undefined, this))
+            }, undefined, false, undefined, this),
+            /* @__PURE__ */ jsx_dev_runtime.jsxDEV("div", {
+              className: "modal-actions",
+              children: /* @__PURE__ */ jsx_dev_runtime.jsxDEV("button", {
+                className: "btn btn-secondary",
+                onClick: () => setShowModal(false),
+                children: "Close"
+              }, undefined, false, undefined, this)
+            }, undefined, false, undefined, this)
+          ]
+        }, undefined, true, undefined, this)
+      }, undefined, false, undefined, this),
+      error && /* @__PURE__ */ jsx_dev_runtime.jsxDEV("div", {
+        className: "error-message",
+        children: error
+      }, undefined, false, undefined, this)
     ]
   }, undefined, true, undefined, this);
 }
-var root = import_client.createRoot(document.getElementById("root"));
-root.render(/* @__PURE__ */ jsx_dev_runtime.jsxDEV(App, {}, undefined, false, undefined, this));
+var container = document.getElementById("root");
+if (container) {
+  const root = import_client.createRoot(container);
+  root.render(/* @__PURE__ */ jsx_dev_runtime.jsxDEV(App, {}, undefined, false, undefined, this));
+}

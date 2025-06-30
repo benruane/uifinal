@@ -20,7 +20,7 @@ async function main() {
         execInputs: Buffer.from('equity:AAPL,fx:EUR,cfd:XAU:USD'),
         tallyInputs: Buffer.from([]),
         memo: Buffer.from(new Date().toISOString()),
-        gasPrice: 200000n
+        gasPrice: 2000000n
     };
 
     const result = await postAndAwaitDataRequest(signer, dataRequestInput, {});

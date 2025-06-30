@@ -6,7 +6,7 @@
       "dependencies": {
         "@cosmjs/stargate": "^0.33.1",
         "@cosmjs/tendermint-rpc": "^0.33.1",
-        "@seda-protocol/dev-tools": "^1.0.0-rc.14",
+        "@seda-protocol/dev-tools": "^1.0.0-rc.15",
         "@seda-protocol/proto-messages": "^1.0.0-rc.1",
         "react": "^19.1.0",
         "react-dom": "^19.1.0",
@@ -210,7 +210,7 @@
 
     "@rollup/rollup-win32-x64-msvc": ["@rollup/rollup-win32-x64-msvc@4.44.0", "", { "os": "win32", "cpu": "x64" }, "sha512-Q2Mgwt+D8hd5FIPUuPDsvPR7Bguza6yTkJxspDGkZj7tBRn2y4KSWYuIXpftFSjBra76TbKerCV7rgFPQrn+wQ=="],
 
-    "@seda-protocol/dev-tools": ["@seda-protocol/dev-tools@1.0.0-rc.14", "", { "dependencies": { "@cosmjs/cosmwasm-stargate": "^0.32.4", "@cosmjs/crypto": "^0.32.4", "@cosmjs/proto-signing": "^0.32.4", "@cosmjs/stargate": "^0.32.4", "@cosmjs/tendermint-rpc": "^0.32.4", "@seda-protocol/proto-messages": "1.0.0-rc.1", "@seda-protocol/utils": "^1.3.0", "@seda-protocol/vm": "^1.0.12", "big.js": "^6.2.1", "dotenv": "^16.3.1", "node-fetch": "^3.3.2", "node-gzip": "^1.1.2", "true-myth": "^7.3.0", "valibot": "^0.42.1" }, "bin": { "seda-sdk": "bin/index.js" } }, "sha512-EiXE0JrdBJZPCaZr6V9jlhykD2Clv3OplHMlLEQXycERw6zILvZ7lM0vTOMaKpvNZxKz06+zcFb/el+hRU5gqQ=="],
+    "@seda-protocol/dev-tools": ["@seda-protocol/dev-tools@1.0.0-rc.15", "", { "dependencies": { "@cosmjs/cosmwasm-stargate": "^0.32.4", "@cosmjs/crypto": "^0.32.4", "@cosmjs/proto-signing": "^0.32.4", "@cosmjs/stargate": "^0.32.4", "@cosmjs/tendermint-rpc": "^0.32.4", "@seda-protocol/proto-messages": "1.0.0-rc.1", "@seda-protocol/utils": "^1.3.0", "@seda-protocol/vm": "^1.0.12", "big.js": "^6.2.1", "dotenv": "^16.3.1", "node-fetch": "^3.3.2", "node-gzip": "^1.1.2", "true-myth": "^7.3.0", "valibot": "^0.42.1" }, "bin": { "seda-sdk": "bin/index.js" } }, "sha512-MzkAjGFddDsDQYj6anpPiyu5OsMjD4rWAOHY49EhfScqxxM1oniL/3kORqcvT8GDSBB6RFvpdfzl9vM6kEJ7tA=="],
 
     "@seda-protocol/proto-messages": ["@seda-protocol/proto-messages@1.0.0-rc.1", "", { "dependencies": { "protobufjs": "^7.4.0" } }, "sha512-hBcsq3VNOxbqk4UVkBXReDjG3W86pPz01abwoaBqYwWC7FBmJWqKUO1wCfL0qFbOjjOnsXXMxE+aJdnGWwh+3Q=="],
 

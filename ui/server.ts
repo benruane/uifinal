@@ -1,11 +1,10 @@
 import { serve } from "bun";
 import { readFileSync } from "fs";
 import { join } from "path";
-import { PostDataRequestInput, Signer, buildSigningConfig, postAndAwaitDataRequest, postDataRequest, awaitDataResult } from '@seda-protocol/dev-tools';
+import { PostDataRequestInput, Signer, buildSigningConfig, postDataRequestBundle, awaitDataResult } from '@seda-protocol/dev-tools';
 import { QueryClient, createProtobufRpcClient } from "@cosmjs/stargate";
 import { Comet38Client } from "@cosmjs/tendermint-rpc";
 import { sedachain } from "@seda-protocol/proto-messages";
-import { DynamicGasOptimizer } from './dynamic_gas_optimizer.js';
 
 // Load environment variables from parent directory
 const envPath = join(import.meta.dir, '..', '.env');
@@ -25,14 +24,13 @@ Object.entries(envVars).forEach(([key, value]) => {
   }
 });
 
-// Improved configuration management
+// Simple configuration
 const CONFIG = {
   ORACLE_PROGRAM_ID: process.env.ORACLE_PROGRAM_ID!,
-  MAX_ASSETS_PER_REQUEST: 3,
-  SEQUENCE_DELAY_MS: 1000,
-  MAX_RETRIES: 3,
-  RETRY_DELAY_MS: 2000,
-  REQUEST_TIMEOUT_MS: 60000
+  MAX_ASSETS_PER_REQUEST: 4,
+  REQUEST_TIMEOUT_MS: 30000,
+  POLLING_INTERVAL_SECONDS: 1,
+  TIMEOUT_SECONDS: 30
 };
 
 interface PriceResult {
@@ -47,54 +45,17 @@ interface DataRequestResult {
   assets: string[];
 }
 
-// Sequence management to prevent conflicts
-class SequenceManager {
-  private currentSequence: number = 0;
-  private pendingSequences: Set<number> = new Set();
-  private isInitialized: boolean = false;
-
-  async initialize(signer: Signer): Promise<void> {
-    try {
-      // For now, start with sequence 0 and let the blockchain handle sequence validation
-      // In a production system, we would query the current sequence from the blockchain
-      this.currentSequence = 0;
-      this.isInitialized = true;
-      console.log(`🔢 Sequence manager initialized with starting sequence: ${this.currentSequence}`);
-    } catch (error) {
-      console.error('Failed to initialize sequence manager:', error);
-      throw error;
-    }
+// Helper function to split assets into chunks
+const chunkAssets = (assets: string[], chunkSize: number = CONFIG.MAX_ASSETS_PER_REQUEST): string[][] => {
+  const chunks: string[][] = [];
+  for (let i = 0; i < assets.length; i += chunkSize) {
+    chunks.push(assets.slice(i, i + chunkSize));
   }
-
-  async getNextSequence(): Promise<number> {
-    if (!this.isInitialized) {
-      throw new Error('Sequence manager not initialized');
-    }
-    
-    const sequence = this.currentSequence++;
-    this.pendingSequences.add(sequence);
-    return sequence;
-  }
-
-  markSequenceComplete(sequence: number): void {
-    this.pendingSequences.delete(sequence);
-  }
-
-  markSequenceFailed(sequence: number): void {
-    this.pendingSequences.delete(sequence);
-    // Could implement retry logic here
-  }
-
-  getPendingCount(): number {
-    return this.pendingSequences.size;
-  }
-}
-
-// Global sequence manager instance
-const sequenceManager = new SequenceManager();
+  return chunks;
+};
 
 const server = serve({
-  port: 3003,
+  port: 3004,
   async fetch(req) {
     const url = new URL(req.url);
     
@@ -103,12 +64,29 @@ const server = serve({
       return handleSedaRequest(req);
     }
     
-    // New: API endpoint for polling DR result from chain
+    // API endpoint for polling DR result from chain
     if (url.pathname === "/api/poll-dr-chain" && req.method === "POST") {
       try {
         const { drId, blockHeight } = await req.json();
         const result = await fetchDrResultFromChain(drId, blockHeight);
         return new Response(JSON.stringify(result), {
+          status: 200,
+          headers: { "Content-Type": "application/json" }
+        });
+      } catch (error) {
+        return new Response(JSON.stringify({ error: getErrorMessage(error) }), {
+          status: 500,
+          headers: { "Content-Type": "application/json" }
+        });
+      }
+    }
+    
+    // API endpoint for checking additional results from specific DRs
+    if (url.pathname === "/api/check-results" && req.method === "POST") {
+      try {
+        const { drIds, blockHeights } = await req.json();
+        const results = await checkAdditionalResults(drIds, blockHeights);
+        return new Response(JSON.stringify(results), {
           status: 200,
           headers: { "Content-Type": "application/json" }
         });
@@ -153,85 +131,9 @@ function getErrorMessage(error: unknown): string {
   return "Unknown error";
 }
 
-// Improved error handling with retry logic
-async function withRetry<T>(
-  operation: () => Promise<T>, 
-  maxRetries: number = CONFIG.MAX_RETRIES,
-  delayMs: number = CONFIG.RETRY_DELAY_MS
-): Promise<T> {
-  let lastError: Error;
-  
-  for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    try {
-      return await operation();
-    } catch (error) {
-      lastError = error instanceof Error ? error : new Error(String(error));
-      console.warn(`Attempt ${attempt}/${maxRetries} failed:`, lastError.message);
-      
-      if (attempt < maxRetries) {
-        console.log(`Retrying in ${delayMs}ms...`);
-        await new Promise(resolve => setTimeout(resolve, delayMs));
-        delayMs *= 2; // Exponential backoff
-      }
-    }
-  }
-  
-  throw lastError!;
-}
-
-async function submitSingleDataRequest(signer: Signer, assets: string[]): Promise<DataRequestResult> {
-  const inputString = assets.join(',');
-  
-  // Use dynamic gas optimizer
-  const gasOptimizer = new DynamicGasOptimizer(CONFIG.ORACLE_PROGRAM_ID);
-  const gasInfo = await gasOptimizer.calculateOptimalGasParams();
-  
-  const dataRequestInput: PostDataRequestInput = {
-    consensusOptions: {
-      method: 'none'
-    },
-    execProgramId: CONFIG.ORACLE_PROGRAM_ID,
-    execInputs: Buffer.from(inputString),
-    tallyInputs: Buffer.from([]),
-    memo: Buffer.from(new Date().toISOString()),
-    gasPrice: gasInfo.gasPrice
-  };
-
-  console.log('Submitting data request with input:', inputString);
-  console.log(`  Estimated gas: ${gasInfo.estimatedGasPerAsset * BigInt(assets.length)}`);
-  console.log(`  Estimated cost: ${gasInfo.estimatedCostPerDR} SEDA`);
-  
-  const result = await withRetry(() => postAndAwaitDataRequest(signer, dataRequestInput, {}));
-  
-  console.log('Full result object:', JSON.stringify(result, (key, value) => 
-    typeof value === 'bigint' ? value.toString() : value, 2));
-  console.log('Result properties:', Object.keys(result));
-  
-  if (result.exitCode !== 0) {
-    throw new Error(`Data request failed with exit code: ${result.exitCode}`);
-  }
-
-  // Parse the result from the Oracle Program
-  const resultString = result.resultAsUtf8;
-  console.log('Raw result:', resultString);
-  
-  const parsedResults = JSON.parse(resultString);
-  const priceResults: PriceResult[] = parsedResults.map((item: any) => ({
-    symbol: item.symbol,
-    price: parseFloat(item.price)
-  }));
-  
-  return {
-    results: priceResults,
-    drId: result.drId.toString(),
-    drBlockHeight: result.drBlockHeight.toString(),
-    assets: assets
-  };
-}
-
 async function handleSedaRequest(req: Request): Promise<Response> {
   try {
-    const { assets } = await req.json();
+    let { assets } = await req.json();
     
     if (!CONFIG.ORACLE_PROGRAM_ID) {
       return new Response(JSON.stringify({ error: 'ORACLE_PROGRAM_ID environment variable is required' }), {
@@ -240,71 +142,109 @@ async function handleSedaRequest(req: Request): Promise<Response> {
       });
     }
 
-    // Use dynamic gas optimizer to split assets into optimal chunks
-    const gasOptimizer = new DynamicGasOptimizer(CONFIG.ORACLE_PROGRAM_ID);
-    const assetChunks = await gasOptimizer.optimizeAssetChunks(assets);
-    const chunks = assetChunks.map(chunk => chunk.assets);
-    
-    console.log(`📊 Dynamic gas optimization: Processing ${assets.length} assets in ${chunks.length} optimal requests`);
-    console.log(`💰 Total estimated cost: ${assetChunks.reduce((sum, chunk) => sum + chunk.estimatedCost, 0n).toString()} SEDA`);
-    
-    // Initialize signer and sequence manager
+    if (assets.length === 0) {
+      return new Response(JSON.stringify({ error: 'No assets provided' }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" }
+      });
+    }
+
+    // Group assets into DRs, each with up to 4 assets
+    const assetChunks = chunkAssets(assets, CONFIG.MAX_ASSETS_PER_REQUEST);
+    console.log(`📊 User selected ${assets.length} assets, creating ${assetChunks.length} DRs (up to ${CONFIG.MAX_ASSETS_PER_REQUEST} assets per DR)`);
+
+    // Prepare DRs
+    const dataRequestInputs: PostDataRequestInput[] = assetChunks.map((chunk, i) => ({
+      consensusOptions: { method: 'none' },
+      execProgramId: CONFIG.ORACLE_PROGRAM_ID,
+      execInputs: Buffer.from(chunk.join(',')),
+      tallyInputs: Buffer.from([]),
+      memo: Buffer.from(`${new Date().toISOString()}-dr-${i + 1}`),
+      gasPrice: 20000n,
+      gasLimit: 1000000n
+    }));
+
+    // Initialize signer
     const signingConfig = buildSigningConfig({});
     const signer = await Signer.fromPartial(signingConfig);
-    
-    // Initialize sequence manager if not already done
-    if (!sequenceManager.getPendingCount()) {
-      await sequenceManager.initialize(signer);
+    const queryConfig = { rpc: process.env.SEDA_RPC_URL || "https://rpc.testnet.seda.xyz" };
+
+    // Send all DRs in a single bundle
+    let bundleResult;
+    try {
+      console.log(`Submitting bundle of ${dataRequestInputs.length} DRs...`);
+      bundleResult = await postDataRequestBundle(signer, dataRequestInputs, {});
+      console.log(`✅ Bundle posted! Transaction: ${bundleResult.tx}`);
+      console.log(`Data Requests created: ${bundleResult.drs.length}`);
+    } catch (error) {
+      console.error('❌ Bundle post failed:', error);
+      return new Response(JSON.stringify({ error: 'Failed to post DR bundle', details: (error as Error).message }), {
+        status: 500,
+        headers: { "Content-Type": "application/json" }
+      });
     }
-    
-    // Submit chunks with proper sequence management
-    const drIds: string[] = [];
-    const drBlockHeights: string[] = [];
-    
-    for (let i = 0; i < chunks.length; i++) {
-      console.log(`Submitting request ${i + 1}/${chunks.length}: ${chunks[i].join(',')}`);
-      console.log(`  Estimated gas: ${assetChunks[i].estimatedGasCost.toString()}`);
-      console.log(`  Estimated cost: ${assetChunks[i].estimatedCost.toString()} SEDA`);
-      
+
+    // After posting the bundle, collect all DR IDs and block heights immediately
+    const allDrIds = bundleResult.drs.map(dr => dr.id);
+    const allDrBlockHeights = bundleResult.drs.map(dr => dr.height.toString());
+
+    // Monitor each DR with faster response
+    const allResults: any[] = [];
+    // (no need to re-push to allDrIds/allDrBlockHeights in the monitoring loop)
+    const monitoringPromises = bundleResult.drs.map(async (dr, index) => {
       try {
-        const drId = await withRetry(() => submitDataRequestAndGetId(signer, chunks[i]));
-        drIds.push(drId);
-        drBlockHeights.push('pending');
-        
-        // Add delay between submissions to avoid sequence conflicts
-        if (i < chunks.length - 1) {
-          await new Promise(resolve => setTimeout(resolve, CONFIG.SEQUENCE_DELAY_MS));
+        console.log(`[DR ${index + 1}] Starting monitoring: ID=${dr.id}, Height=${dr.height}`);
+        const dataResult = await awaitDataResult(queryConfig, dr, {
+          timeoutSeconds: CONFIG.TIMEOUT_SECONDS,
+          pollingIntervalSeconds: CONFIG.POLLING_INTERVAL_SECONDS
+        });
+        console.log(`[DR ${index + 1}] ✅ Completed: ID=${dr.id}`);
+        if (dataResult.exitCode === 0 && dataResult.resultAsUtf8) {
+          try {
+            const parsedResults = JSON.parse(dataResult.resultAsUtf8);
+            if (Array.isArray(parsedResults)) {
+              allResults.push(...parsedResults);
+              console.log(`[DR ${index + 1}] 📊 Added ${parsedResults.length} results`);
+            }
+          } catch (parseError) {
+            console.warn(`Failed to parse results from DR ${index + 1}:`, parseError);
+          }
         }
       } catch (error) {
-        console.error(`Failed to submit chunk ${i + 1}:`, error);
-        // Continue with other chunks instead of failing completely
-        drIds.push('failed');
-        drBlockHeights.push('failed');
+        console.error(`❌ [DR ${index + 1}] FAILED:`, { drId: dr.id, error: (error as Error).message });
       }
+    });
+
+    // Wait for a shorter time to get initial results, then return what we have
+    const initialWaitTime = Math.min(10000, CONFIG.REQUEST_TIMEOUT_MS); // Wait max 10 seconds for initial results
+    console.log(`⏱️ Waiting ${initialWaitTime}ms for initial results...`);
+    try {
+      await Promise.race([
+        Promise.all(monitoringPromises),
+        new Promise(resolve => setTimeout(resolve, initialWaitTime))
+      ]);
+    } catch (error) {
+      console.warn('Some DRs may still be processing:', error);
     }
-    
-    // Return DR IDs immediately for frontend polling
+
+    console.log(`🎉 Processed ${assetChunks.length} DRs`);
+    console.log(`📊 Results collected so far: ${allResults.length}`);
+    console.log(`📋 DR IDs: ${allDrIds.join(', ')}`);
+
+    // Return results immediately with what we have
     return new Response(JSON.stringify({
-      drIds,
-      drBlockHeights,
-      requestCount: chunks.length,
-      isSplit: chunks.length > 1,
-      status: 'submitted',
-      message: `Submitted ${chunks.length} data requests using dynamic gas optimization. Polling for results...`,
-      pendingSequences: sequenceManager.getPendingCount(),
-      gasOptimization: {
-        totalEstimatedCost: assetChunks.reduce((sum, chunk) => sum + chunk.estimatedCost, 0n).toString(),
-        chunks: assetChunks.map(chunk => ({
-          assets: chunk.assets,
-          estimatedGas: chunk.estimatedGasCost.toString(),
-          estimatedCost: chunk.estimatedCost.toString()
-        }))
-      }
-    }, (key, value) => typeof value === 'bigint' ? value.toString() : value), {
+      drIds: allDrIds,
+      drBlockHeights: allDrBlockHeights,
+      requestCount: assetChunks.length,
+      status: allResults.length > 0 ? 'completed' : 'processing',
+      message: `Processed ${assetChunks.length} DRs. Found ${allResults.length} price results.${allResults.length === 0 ? ' Some DRs may still be processing.' : ''}`,
+      results: allResults,
+      totalResults: allResults.length,
+      processingTime: initialWaitTime
+    }), {
       status: 200,
       headers: { "Content-Type": "application/json" }
     });
-
   } catch (error: unknown) {
     console.error('Error handling SEDA request:', error);
     return new Response(JSON.stringify({ 
@@ -315,64 +255,6 @@ async function handleSedaRequest(req: Request): Promise<Response> {
       headers: { "Content-Type": "application/json" }
     });
   }
-}
-
-// Improved function to submit DR and get DR ID immediately
-async function submitDataRequestAndGetId(signer: Signer, assets: string[]): Promise<string> {
-  const input = assets.join(',');
-  console.log(`Submitting data request with input: ${input}`);
-  
-  // Use dynamic gas optimizer
-  const gasOptimizer = new DynamicGasOptimizer(CONFIG.ORACLE_PROGRAM_ID);
-  const gasInfo = await gasOptimizer.calculateOptimalGasParams();
-  
-  // Create the proper PostDataRequestInput object
-  const dataRequestInput: PostDataRequestInput = {
-    consensusOptions: { method: 'none' },
-    execProgramId: CONFIG.ORACLE_PROGRAM_ID,
-    execInputs: Buffer.from(input),
-    tallyInputs: Buffer.from([]),
-    memo: Buffer.from(new Date().toISOString()),
-    gasPrice: gasInfo.gasPrice
-  };
-  
-  // Use postDataRequest to submit immediately without waiting
-  const result = await withRetry(() => postDataRequest(signer, dataRequestInput));
-  
-  // Return the DR ID immediately from the dr object
-  return result.dr.id;
-}
-
-// New function to poll for DR results using Explorer API
-async function pollDRResults(drIds: string[]): Promise<any[]> {
-  // Poll all DRs in parallel
-  return Promise.all(drIds.map(drId => pollSingleDR(drId)));
-}
-
-// Poll a single DR using the Explorer API
-async function pollSingleDR(drId: string): Promise<any> {
-  const maxAttempts = 30; // 30 attempts * 2 seconds = 60 seconds max
-  let attempts = 0;
-  
-  while (attempts < maxAttempts) {
-    try {
-      const url = `https://explorer-api.testnet.seda.xyz/main/trpc/dataRequest.get?input=${encodeURI(JSON.stringify({drId}))}`;
-      const response = await fetch(url);
-      const data = await response.json();
-      
-      if (data.result && data.result.drId) {
-        console.log(`DR ${drId} found on explorer`);
-        return data.result;
-      }
-    } catch (error: unknown) {
-      console.log(`Error polling DR ${drId}:`, error instanceof Error ? error.message : String(error));
-    }
-    
-    attempts++;
-    await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2 seconds between attempts
-  }
-  
-  throw new Error(`DR ${drId} not found after ${maxAttempts} attempts`);
 }
 
 const SEDA_RPC_URL = process.env.SEDA_RPC_URL || "https://rpc.testnet.seda.xyz";
@@ -392,7 +274,7 @@ async function fetchDrResultFromChain(drId: string, blockHeight: string) {
     }
     console.log(`[fetchDrResultFromChain] Querying DR: ${drId}, blockHeight: ${height}`);
 
-    // 1. Get DataResult (to get batch assignment) - like push solver
+    // 1. Get DataResult (to get batch assignment)
     const dataResultResp = await client.DataResult({
       dataRequestId: drId,
       dataRequestHeight: height
@@ -406,7 +288,7 @@ async function fetchDrResultFromChain(drId: string, blockHeight: string) {
     const batchNumber = dataResultResp.batchAssignment.batchNumber;
     console.log(`[fetchDrResultFromChain] DataResult found - assigned to batch ${batchNumber}`);
 
-    // 2. Get the batch - like push solver
+    // 2. Get the batch
     const batchResp = await client.Batch({
       batchNumber,
       latestSigned: false
@@ -417,7 +299,7 @@ async function fetchDrResultFromChain(drId: string, blockHeight: string) {
       return { status: "batch_not_found" };
     }
     
-    // Check if batch has signatures (like push solver)
+    // Check if batch has signatures
     if (!batchResp.batchSignatures || batchResp.batchSignatures.length === 0) {
       console.log(`[fetchDrResultFromChain] Batch ${batchNumber} has no signatures yet`);
       return { status: "batch_not_signed" };
@@ -425,15 +307,15 @@ async function fetchDrResultFromChain(drId: string, blockHeight: string) {
     
     console.log(`[fetchDrResultFromChain] Batch ${batchNumber} fetched successfully with ${batchResp.batchSignatures.length} signatures!`);
     
-    // 3. Get the actual result using awaitDataResult (like push solver)
+    // 3. Get the actual result using awaitDataResult
     console.log(`[fetchDrResultFromChain] Fetching actual result using awaitDataResult...`);
     
     const queryConfig = { rpc: SEDA_RPC_URL };
     const dataRequest = { id: drId, height: height };
     
     const rawResult = await awaitDataResult(queryConfig, dataRequest, {
-      timeoutSeconds: 30,
-      pollingIntervalSeconds: 2
+      timeoutSeconds: CONFIG.TIMEOUT_SECONDS,
+      pollingIntervalSeconds: CONFIG.POLLING_INTERVAL_SECONDS
     });
     
     console.log(`[fetchDrResultFromChain] Result received:`, {
@@ -477,12 +359,62 @@ async function fetchDrResultFromChain(drId: string, blockHeight: string) {
       blockHeight: batchResp.batch.blockHeight.toString(),
       batchNumber: batchNumber.toString(),
     };
-  } catch (error: unknown) {
-    console.error(`[fetchDrResultFromChain] Error:`, error);
+    
+  } catch (error) {
+    console.error('[fetchDrResultFromChain] Error:', error);
     return { status: "error", error: getErrorMessage(error) };
   }
 }
 
-console.log(`🚀 SEDA UI Server running at http://localhost:${server.port}`);
+async function checkAdditionalResults(drIds: string[], blockHeights: string[]) {
+  const results: any[] = [];
+  const queryConfig = { rpc: SEDA_RPC_URL };
+  
+  const checkPromises = drIds.map(async (drId, index) => {
+    try {
+      const dataRequest = { id: drId, height: BigInt(blockHeights[index] || 0) };
+      const dataResult = await awaitDataResult(queryConfig, dataRequest, {
+        timeoutSeconds: 5,
+        pollingIntervalSeconds: 0.5
+      });
+
+      console.log(`[checkAdditionalResults] DR ${drId} exitCode: ${dataResult.exitCode}, result:`, dataResult.result);
+
+      if (dataResult.exitCode === 0) {
+        let parsedResults = null;
+        let raw = dataResult.resultAsUtf8 || dataResult.result;
+        if (typeof raw === 'string' && raw.startsWith('0x')) {
+          raw = Buffer.from(raw.slice(2), 'hex').toString('utf8');
+        }
+        try {
+          parsedResults = JSON.parse(raw);
+          if (Array.isArray(parsedResults)) {
+            results.push(...parsedResults);
+            console.log(`[checkAdditionalResults] Parsed ${parsedResults.length} results from DR ${drId}`);
+          } else {
+            // Not an array, but still valid JSON
+            results.push(parsedResults);
+            console.log(`[checkAdditionalResults] Parsed non-array JSON result from DR ${drId}`);
+          }
+        } catch (parseError) {
+          // Not JSON, return raw result
+          results.push(raw);
+          console.warn(`[checkAdditionalResults] Returning raw result from DR ${drId}:`, raw);
+        }
+      }
+    } catch (error) {
+      console.log(`[checkAdditionalResults] DR ${drId} not ready yet or error:`, error);
+    }
+  });
+
+  await Promise.allSettled(checkPromises);
+
+  return {
+    newResults: results,
+    totalNewResults: results.length
+  };
+}
+
+console.log(`🚀 SEDA UI Server running at http://localhost:3004`);
 console.log(`Environment loaded from: ${envPath}`);
 console.log(`Oracle Program ID: ${process.env.ORACLE_PROGRAM_ID}`); 
