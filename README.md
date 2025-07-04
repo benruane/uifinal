@@ -1,3 +1,4 @@
+// Trigger Vercel redeploy
 <p align="center">
   <a href="https://seda.xyz/">
     <img width="90%" alt="seda-protocol" src="https://raw.githubusercontent.com/sedaprotocol/.github/refs/heads/main/images/banner.png">
