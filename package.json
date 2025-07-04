@@ -19,17 +19,15 @@
     "evm"
   ],
   "license": "MIT",
-  "devDependencies": {
-    "@seda-protocol/dev-tools": "^1.0.0-rc.14",
-    "@types/bun": "^1.2.13",
-    "bignumber.js": "^9.3.0",
-    "binaryen": "^123.0.0",
-    "wabt": "^1.0.37"
-  },
   "dependencies": {
+    "@seda-protocol/dev-tools": "^1.0.0-rc.14",
     "@seda-protocol/vm": "^1.0.12",
+    "@types/bun": "^1.2.13",
     "@types/react": "^19.1.8",
     "@types/react-dom": "^19.1.6",
+    "bignumber.js": "^9.3.0",
+    "binaryen": "^123.0.0",
+    "wabt": "^1.0.37",
     "react": "^19.1.0",
     "react-dom": "^19.1.0"
   }
