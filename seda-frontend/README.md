@@ -149,3 +149,5 @@ The frontend supports these asset categories:
 - Results are displayed in real-time as they come back from the network
 - The UI is responsive and works on desktop and mobile devices
 - All API calls are proxied through Vite's dev server to avoid CORS issues 
+
+// Trigger Vercel redeploy from seda-frontend 
