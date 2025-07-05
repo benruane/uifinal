@@ -1,7 +1,6 @@
-import { NowRequest, NowResponse } from '@vercel/node';
-import { SedaClient } from '@seda-protocol/dev-tools/build/index.js';
+import type { VercelRequest, VercelResponse } from '@vercel/node';
 
-export default async function handler(req: NowRequest, res: NowResponse) {
+export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
     res.status(405).json({ error: 'Method not allowed' });
     return;
@@ -14,23 +13,31 @@ export default async function handler(req: NowRequest, res: NowResponse) {
   }
 
   try {
-    // Initialize SEDA client
-    const client = new SedaClient({
-      network: 'testnet',
-      oracleProgramId: process.env.ORACLE_PROGRAM_ID || '71b5d524d45c4bb170e82a91269e501dd1e8c2289a9930f1d67bfdd0d2786010'
+    // Example SEDA testnet endpoint and payload (adjust as needed)
+    const sedaEndpoint = process.env.SEDA_POLL_URL || 'https://dxfeed.seda.xyz/poll';
+    const payload = { drId, blockHeight };
+
+    // Poll the SEDA testnet for the data request result
+    const sedaRes = await fetch(sedaEndpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
     });
 
-    // Poll for data request result
-    const result = await client.getDataRequestResult({
-      drId,
-      blockHeight
-    });
+    if (!sedaRes.ok) {
+      const errorText = await sedaRes.text();
+      res.status(500).json({ error: `SEDA network error: ${errorText}` });
+      return;
+    }
 
+    const sedaData = await sedaRes.json();
+
+    // Map the SEDA response to the frontend format
     res.status(200).json({
-      results: result.results || [],
-      totalResults: (result.results || []).length,
-      status: result.status || 'pending',
-      message: result.message || 'Polling complete'
+      results: sedaData.results || [],
+      totalResults: sedaData.totalResults || (sedaData.results ? sedaData.results.length : 0),
+      status: sedaData.status || 'pending',
+      message: sedaData.message || 'Polling complete'
     });
   } catch (error: any) {
     res.status(500).json({ error: error.message || 'Internal server error' });
